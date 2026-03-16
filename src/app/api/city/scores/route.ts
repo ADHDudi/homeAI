@@ -37,7 +37,10 @@ export async function GET() {
       updatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[api/city/scores]", error);
+    return NextResponse.json(
+      { error: "An internal error occurred. Please try again later." },
+      { status: 500 }
+    );
   }
 }

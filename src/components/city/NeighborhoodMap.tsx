@@ -7,6 +7,7 @@ import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
 import type { GreenBuilding, PointOfInterest } from "@/types/neighborhood";
+import { escapeHtml } from "@/lib/utils/escapeHtml";
 
 type LayerType = "greenBuildings" | "busStops" | "bankBranches";
 
@@ -118,10 +119,10 @@ export function NeighborhoodMap({
       marker.bindPopup(
         `<div style="direction:rtl;text-align:right;min-width:160px;">
           <strong>🌿 Green Building</strong><br/>
-          ${gb.street} ${gb.number}<br/>
-          ${gb.floors > 0 ? `${gb.floors} floors` : ""}
-          ${gb.units > 0 ? ` · ${gb.units} units` : ""}
-          ${gb.score > 0 ? `<br/>Score: ${gb.score}` : ""}
+          ${escapeHtml(gb.street)} ${escapeHtml(gb.number)}<br/>
+          ${gb.floors > 0 ? `${escapeHtml(gb.floors)} floors` : ""}
+          ${gb.units > 0 ? ` · ${escapeHtml(gb.units)} units` : ""}
+          ${gb.score > 0 ? `<br/>Score: ${escapeHtml(gb.score)}` : ""}
         </div>`
       );
       groups.greenBuildings.addLayer(marker);
@@ -133,8 +134,8 @@ export function NeighborhoodMap({
       const marker = L.marker([bs.lat, bs.lng], { icon: ICONS.busStops });
       marker.bindPopup(
         `<div style="direction:rtl;text-align:right;min-width:140px;">
-          <strong>🚌 ${bs.name}</strong>
-          ${bs.details ? `<br/>${bs.details}` : ""}
+          <strong>🚌 ${escapeHtml(bs.name)}</strong>
+          ${bs.details ? `<br/>${escapeHtml(bs.details)}` : ""}
         </div>`
       );
       groups.busStops.addLayer(marker);
@@ -146,8 +147,8 @@ export function NeighborhoodMap({
       const marker = L.marker([bb.lat, bb.lng], { icon: ICONS.bankBranches });
       marker.bindPopup(
         `<div style="direction:rtl;text-align:right;min-width:160px;">
-          <strong>🏦 ${bb.name}</strong>
-          ${bb.details ? `<br/>${bb.details}` : ""}
+          <strong>🏦 ${escapeHtml(bb.name)}</strong>
+          ${bb.details ? `<br/>${escapeHtml(bb.details)}` : ""}
         </div>`
       );
       groups.bankBranches.addLayer(marker);

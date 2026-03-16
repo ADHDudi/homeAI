@@ -12,6 +12,7 @@
 import { NextResponse } from "next/server";
 import { getCityProfile } from "@/lib/data/aggregator";
 import { getCityNeighborhoodData } from "@/lib/data/neighborhood-aggregator";
+import { cityCodeSchema } from "@/lib/validation/schemas";
 
 export const revalidate = 300; // 5 min
 
@@ -21,12 +22,13 @@ export async function GET(
 ) {
   try {
     const { cityCode } = await params;
-    const code = parseInt(cityCode, 10);
+    const parsed = cityCodeSchema.safeParse(cityCode);
 
-    if (isNaN(code)) {
+    if (!parsed.success) {
       return NextResponse.json({ error: "Invalid city code" }, { status: 400 });
     }
 
+    const code = parsed.data;
     const city = await getCityProfile(code);
     if (!city) {
       return NextResponse.json({ error: "City not found" }, { status: 404 });
@@ -35,7 +37,10 @@ export async function GET(
     const data = await getCityNeighborhoodData(city.cityName);
     return NextResponse.json(data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[api/city/neighborhood]", error);
+    return NextResponse.json(
+      { error: "An internal error occurred. Please try again later." },
+      { status: 500 }
+    );
   }
 }

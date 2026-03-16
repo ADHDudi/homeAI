@@ -6,6 +6,7 @@ import "leaflet/dist/leaflet.css";
 import type { CityScoreRow } from "@/types/city";
 import { getCityCoordinates } from "@/data/cityCoordinates";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
+import { escapeHtml } from "@/lib/utils/escapeHtml";
 
 function getScoreColor(score: number): string {
   if (score >= 75) return "#059669";
@@ -107,9 +108,9 @@ export function CityMap({ cities, layer }: CityMapProps) {
 
       marker.bindTooltip(
         `<div style="direction:rtl;text-align:right;">
-          <strong>${city.cityName}</strong><br/>
-          ${label}<br/>
-          Pop: ${city.population.toLocaleString()}
+          <strong>${escapeHtml(city.cityName)}</strong><br/>
+          ${escapeHtml(label)}<br/>
+          Pop: ${escapeHtml(city.population.toLocaleString())}
         </div>`,
         { direction: "top", offset: [0, -radius] }
       );

@@ -163,11 +163,18 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
       return;
     }
 
+    // Validate city code is a positive integer before fetching
+    const code = Number(selectedCode);
+    if (!Number.isInteger(code) || code < 0 || code > 99999) {
+      setNeighborhoodData(null);
+      return;
+    }
+
     let cancelled = false;
     setNeighborhoodLoading(true);
     setNeighborhoodData(null);
 
-    fetch(`/api/city/${selectedCode}/neighborhood`)
+    fetch(`/api/city/${code}/neighborhood`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!cancelled) setNeighborhoodData(data);

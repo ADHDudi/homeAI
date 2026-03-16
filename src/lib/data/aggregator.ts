@@ -59,9 +59,9 @@ interface DiskCachePayload {
 function writeDiskCache(payload: DiskCachePayload) {
   try {
     if (!fs.existsSync(DISK_CACHE_DIR)) {
-      fs.mkdirSync(DISK_CACHE_DIR, { recursive: true });
+      fs.mkdirSync(DISK_CACHE_DIR, { recursive: true, mode: 0o700 });
     }
-    fs.writeFileSync(DISK_CACHE_FILE, JSON.stringify(payload));
+    fs.writeFileSync(DISK_CACHE_FILE, JSON.stringify(payload), { mode: 0o600 });
     console.log(`[cache] Saved ${Object.values(payload.datasets).reduce((s, a) => s + a.length, 0)} records to disk cache`);
   } catch (err) {
     console.warn("[cache] Failed to write disk cache:", (err as Error).message);
