@@ -39,6 +39,9 @@ yarn-error.log*
 # data cache (offline fallback)
 /.data-cache/
 
+# worktrees
+/.worktrees/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
