@@ -79,7 +79,7 @@ const DATA_SOURCES = [
 
 export default function MethodologyPage() {
   return (
-    <div className="space-y-8 max-w-4xl w-full">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8 max-w-4xl w-full">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Methodology</h1>
         <p className="text-muted-foreground mt-1">

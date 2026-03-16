@@ -36,9 +36,9 @@ export default async function ComparePage() {
     .sort((a, b) => b.investmentScore - a.investmentScore);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Compare Cities</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Compare Cities</h1>
         <p className="text-muted-foreground mt-1">
           Side-by-side comparison of investment metrics
         </p>

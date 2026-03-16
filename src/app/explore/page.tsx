@@ -22,9 +22,9 @@ export default async function ExplorePage() {
     .sort((a, b) => b.investmentScore - a.investmentScore);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Map Explorer</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Map Explorer</h1>
         <p className="text-muted-foreground mt-1">
           Interactive map with investment heatmap and project markers
         </p>

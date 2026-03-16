@@ -116,15 +116,15 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
 
             {expanded === n.neighborhood && (
               <CardContent className="pt-0">
-                <div className="border rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full text-sm min-w-[400px]">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left px-3 py-2 font-medium">Project</th>
-                        <th className="text-right px-3 py-2 font-medium">₪/m²</th>
-                        <th className="text-right px-3 py-2 font-medium">Units</th>
-                        <th className="text-right px-3 py-2 font-medium">Subs/Win</th>
-                        <th className="text-left px-3 py-2 font-medium">Status</th>
+                        <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Project</th>
+                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">₪/m²</th>
+                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">Units</th>
+                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">Subs/Win</th>
+                        <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Status</th>
                       </tr>
                     </thead>
                     <tbody>

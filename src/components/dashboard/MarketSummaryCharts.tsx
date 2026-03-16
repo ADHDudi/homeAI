@@ -62,7 +62,7 @@ export function MarketSummaryCharts({ cities }: { cities: CityScoreRow[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{cities.length}</div>
+          <div className="text-xl md:text-2xl font-bold">{cities.length}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Population &gt; 5,000
           </p>
@@ -76,7 +76,7 @@ export function MarketSummaryCharts({ cities }: { cities: CityScoreRow[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{avgScore}</div>
+          <div className="text-xl md:text-2xl font-bold">{avgScore}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Across all cities
           </p>
@@ -90,7 +90,7 @@ export function MarketSummaryCharts({ cities }: { cities: CityScoreRow[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{withRenewal}</div>
+          <div className="text-xl md:text-2xl font-bold">{withRenewal}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Cities with active projects
           </p>
@@ -104,7 +104,7 @@ export function MarketSummaryCharts({ cities }: { cities: CityScoreRow[] }) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-3xl font-bold">{withPricing}</div>
+          <div className="text-xl md:text-2xl font-bold">{withPricing}</div>
           <p className="text-xs text-muted-foreground mt-1">
             Cities with Mechir LaMishtaken
           </p>

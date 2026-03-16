@@ -27,9 +27,9 @@ export default async function ProjectsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Urban Renewal Projects</h1>
+        <h1 className="text-2xl md:text-xl md:text-2xl font-bold tracking-tight">Urban Renewal Projects</h1>
         <p className="text-muted-foreground mt-1">
           Browse all {total} urban renewal projects across Israel
         </p>
@@ -41,13 +41,13 @@ export default async function ProjectsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground">Total Projects</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">{total}</div>
+                <div className="text-xl md:text-2xl font-bold">{total}</div>
               </CardContent>
             </Card>
             <Card>
@@ -55,7 +55,7 @@ export default async function ProjectsPage() {
                 <CardTitle className="text-sm text-muted-foreground">In Execution</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-emerald-600">
+                <div className="text-xl md:text-2xl font-bold text-emerald-600">
                   {inExecution.length}
                 </div>
               </CardContent>
@@ -65,7 +65,7 @@ export default async function ProjectsPage() {
                 <CardTitle className="text-sm text-muted-foreground">Additional Units</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold">
+                <div className="text-xl md:text-2xl font-bold">
                   {totalAdditionalUnits.toLocaleString()}
                 </div>
               </CardContent>
