@@ -32,11 +32,16 @@ export function JustAIitLogo({
  */
 export function PoweredByBrand() {
   return (
-    <div className="flex items-center gap-1.5 shrink-0">
+    <a
+      href="https://buymeacoffee.com/adhdudi"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 shrink-0 hover:opacity-80 transition-opacity"
+    >
       <span className="text-[10px] text-muted-foreground font-medium hidden lg:inline">
         powered by
       </span>
       <JustAIitLogo size="sm" />
-    </div>
+    </a>
   );
 }
