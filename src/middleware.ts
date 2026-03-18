@@ -1,8 +1,15 @@
 /**
- * Next.js middleware — applies security headers to all responses
+ * Next.js middleware — handles i18n locale routing, security headers,
  * and rate-limits API routes (in-memory sliding window, 60 req/min per IP).
  */
 import { NextRequest, NextResponse } from "next/server";
+import createIntlMiddleware from "next-intl/middleware";
+import { routing } from "@/i18n/routing";
+
+// ---------------------------------------------------------------------------
+// i18n middleware
+// ---------------------------------------------------------------------------
+const intlMiddleware = createIntlMiddleware(routing);
 
 // ---------------------------------------------------------------------------
 // Rate limiting (in-memory, per-IP sliding window)
@@ -60,26 +67,29 @@ const SECURITY_HEADERS: Record<string, string> = {
   ].join("; "),
 };
 
+function applySecurityHeaders(response: NextResponse): void {
+  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(header, value);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+  const { pathname } = request.nextUrl;
 
-  // Apply security headers to every response
-  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
-    response.headers.set(header, value);
-  }
+  // API routes: rate limiting + security headers only (no i18n)
+  if (pathname.startsWith("/api/")) {
+    const response = NextResponse.next();
+    applySecurityHeaders(response);
 
-  // Rate-limit API routes only
-  if (request.nextUrl.pathname.startsWith("/api/")) {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip") ??
       "unknown";
 
     const { ok, remaining } = checkRate(ip);
-
     response.headers.set("X-RateLimit-Limit", String(MAX_REQUESTS));
     response.headers.set("X-RateLimit-Remaining", String(remaining));
 
@@ -90,15 +100,18 @@ export function middleware(request: NextRequest) {
           status: 429,
           headers: {
             "Retry-After": "60",
-            ...Object.fromEntries(
-              Object.entries(SECURITY_HEADERS)
-            ),
+            ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
           },
         }
       );
     }
+
+    return response;
   }
 
+  // All other routes: i18n routing + security headers
+  const response = intlMiddleware(request);
+  applySecurityHeaders(response);
   return response;
 }
 

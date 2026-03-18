@@ -1,10 +1,20 @@
 import { getAllCityProfiles } from "@/lib/data/aggregator";
 import type { CityScoreRow } from "@/types/city";
 import { MapExplorerClient } from "@/components/map/MapExplorerClient";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations("map");
+
   const profiles = await getAllCityProfiles();
 
   const cities: CityScoreRow[] = profiles
@@ -24,9 +34,9 @@ export default async function ExplorePage() {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Map Explorer</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Interactive map with investment heatmap and project markers
+          {t("subtitle")}
         </p>
       </div>
       <MapExplorerClient cities={cities} />

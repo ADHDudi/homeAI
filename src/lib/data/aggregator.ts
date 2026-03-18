@@ -334,6 +334,14 @@ function buildCityProfile(
   const municipalTotalExpenses = getFinanceValue(2879);  // Total regular expenses
   const municipalLoanBurden = getFinanceValue(1299);     // Outstanding loan burden
 
+  // Data availability: a city has infrastructure data if ANY of the 3 sources returned records
+  const hasInfrastructureData = bankRecords.length > 0 || busStopRecords.length > 0 || greenBuildingRecords.length > 0;
+  // Development data: any renewal, construction, or housing records
+  const hasDevelopmentData = renewalRecords.length > 0 || constructionRecords.length > 0 || housingRecords.length > 0;
+  // Environment: no contaminated sites listed = clean city (good score, not N/A).
+  // Only mark N/A if the entire contaminated dataset failed to load (checked globally).
+  const hasEnvironmentData = true;
+
   const profileWithoutScore: Omit<CityProfile, "investmentScore" | "scoreBreakdown"> = {
     cityName,
     cityCode,
@@ -361,6 +369,9 @@ function buildCityProfile(
     municipalTotalIncome,
     municipalTotalExpenses,
     municipalLoanBurden,
+    hasInfrastructureData,
+    hasDevelopmentData,
+    hasEnvironmentData,
   };
 
   return {

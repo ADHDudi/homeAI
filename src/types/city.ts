@@ -4,15 +4,15 @@
  * Core domain types for city investment profiles and scoring.
  */
 
-/** Breakdown of investment sub-scores (0-100 each). */
+/** Breakdown of investment sub-scores (0-100 each, null = no data). */
 export interface ScoreBreakdown {
   overall: number;
-  development: number;
-  demand: number;
-  price: number;
-  infrastructure: number;
-  municipal: number;
-  environment: number;
+  development: number | null;
+  demand: number | null;
+  price: number | null;
+  infrastructure: number | null;
+  municipal: number | null;
+  environment: number | null;
 }
 
 /** Population counts by age bracket, sourced from CBS. */
@@ -65,6 +65,11 @@ export interface CityProfile {
   municipalTotalIncome: number | null;
   municipalTotalExpenses: number | null;
   municipalLoanBurden: number | null;
+
+  // Data availability flags (true = we found actual data for this city)
+  hasInfrastructureData: boolean;
+  hasDevelopmentData: boolean;
+  hasEnvironmentData: boolean;
 
   // Scores
   investmentScore: number;

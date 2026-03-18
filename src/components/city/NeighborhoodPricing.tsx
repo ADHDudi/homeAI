@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   BarChart,
@@ -18,12 +19,13 @@ interface Props {
 }
 
 export function NeighborhoodPricing({ neighborhoods }: Props) {
+  const t = useTranslations("pricing");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (neighborhoods.length === 0) {
     return (
       <div className="text-center py-6 text-muted-foreground text-sm">
-        No Mechir LaMishtaken pricing data available for this city.
+        {t("noData")}
       </div>
     );
   }
@@ -43,7 +45,7 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
       {chartData.length > 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Price by Neighborhood (₪/m²)</CardTitle>
+            <CardTitle className="text-base">{t("priceByNeighborhood")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 36)}>
@@ -61,7 +63,7 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
                   style={{ direction: "rtl" }}
                 />
                 <Tooltip
-                  formatter={(value) => [`₪${Number(value).toLocaleString()}`, "Avg ₪/m²"]}
+                  formatter={(value) => [`₪${Number(value).toLocaleString()}`, t("priceHeader")]}
                   labelFormatter={(label) => {
                     const item = chartData.find((d) => d.name === String(label));
                     return item?.fullName || String(label);
@@ -80,7 +82,7 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
           <Card key={n.neighborhood}>
             <button
               onClick={() => setExpanded(expanded === n.neighborhood ? null : n.neighborhood)}
-              className="w-full text-left"
+              className="w-full text-start"
             >
               <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
@@ -89,7 +91,7 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
                       {n.neighborhood}
                     </CardTitle>
                     <span className="text-xs text-muted-foreground">
-                      {n.projects.length} project{n.projects.length !== 1 ? "s" : ""}
+                      {t("projectCount", { count: n.projects.length })}
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-sm">
@@ -99,11 +101,11 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
                       </span>
                     )}
                     <span className="text-muted-foreground">
-                      {n.totalUnits} units
+                      {t("units", { count: n.totalUnits })}
                     </span>
                     {n.avgSubscriberRatio !== null && (
                       <span className="text-muted-foreground">
-                        {n.avgSubscriberRatio.toFixed(1)}x demand
+                        {t("demand", { ratio: n.avgSubscriberRatio.toFixed(1) })}
                       </span>
                     )}
                     <span className="text-muted-foreground text-lg">
@@ -120,11 +122,11 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
                   <table className="w-full text-sm min-w-[400px]">
                     <thead>
                       <tr className="border-b bg-muted/50">
-                        <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Project</th>
-                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">₪/m²</th>
-                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">Units</th>
-                        <th className="text-right px-3 py-2 font-medium whitespace-nowrap">Subs/Win</th>
-                        <th className="text-left px-3 py-2 font-medium whitespace-nowrap">Status</th>
+                        <th className="text-start px-3 py-2 font-medium whitespace-nowrap">{t("project")}</th>
+                        <th className="text-end px-3 py-2 font-medium whitespace-nowrap">{t("priceHeader")}</th>
+                        <th className="text-end px-3 py-2 font-medium whitespace-nowrap">{t("unitsHeader")}</th>
+                        <th className="text-end px-3 py-2 font-medium whitespace-nowrap">{t("subsWin")}</th>
+                        <th className="text-start px-3 py-2 font-medium whitespace-nowrap">{t("statusHeader")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -133,11 +135,11 @@ export function NeighborhoodPricing({ neighborhoods }: Props) {
                           <td className="px-3 py-2" style={{ direction: "rtl" }}>
                             {p.name || "—"}
                           </td>
-                          <td className="text-right px-3 py-2 font-medium">
+                          <td className="text-end px-3 py-2 font-medium">
                             {p.pricePerMeter > 0 ? `₪${Math.round(p.pricePerMeter).toLocaleString()}` : "—"}
                           </td>
-                          <td className="text-right px-3 py-2">{p.units || "—"}</td>
-                          <td className="text-right px-3 py-2">
+                          <td className="text-end px-3 py-2">{p.units || "—"}</td>
+                          <td className="text-end px-3 py-2">
                             {p.winners > 0 ? `${(p.subscribers / p.winners).toFixed(1)}x` : "—"}
                           </td>
                           <td className="px-3 py-2 text-muted-foreground" style={{ direction: "rtl" }}>

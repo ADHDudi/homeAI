@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import {
   Table,
@@ -38,13 +39,15 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
 }
 
 function SortIcon({ column, activeColumn, dir }: { column: SortKey; activeColumn: SortKey; dir: SortDir }) {
-  if (column !== activeColumn) return <ArrowUpDown className="inline ml-1 h-3 w-3 text-muted-foreground/50" />;
+  if (column !== activeColumn) return <ArrowUpDown className="inline ms-1 h-3 w-3 text-muted-foreground/50" />;
   return dir === "desc"
-    ? <ArrowDown className="inline ml-1 h-3 w-3 text-primary" />
-    : <ArrowUp className="inline ml-1 h-3 w-3 text-primary" />;
+    ? <ArrowDown className="inline ms-1 h-3 w-3 text-primary" />
+    : <ArrowUp className="inline ms-1 h-3 w-3 text-primary" />;
 }
 
 export function TopCitiesTable({ cities, totalCount }: { cities: CityScoreRow[]; totalCount?: number }) {
+  const t = useTranslations("table");
+  const td = useTranslations("dashboard");
   const [search, setSearch] = useState("");
   const [districtFilter, setDistrictFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortKey>("score");
@@ -105,17 +108,17 @@ export function TopCitiesTable({ cities, totalCount }: { cities: CityScoreRow[];
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
         <Input
-          placeholder="Search city / חיפוש עיר..."
+          placeholder={td("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full sm:max-w-xs"
         />
         <Select value={districtFilter} onValueChange={(v) => v && setDistrictFilter(v)}>
           <SelectTrigger className="w-[200px]">
-            <span>{districtFilter === "all" ? "All Districts" : `${districtFilter}${DISTRICTS[districtFilter] ? ` (${DISTRICTS[districtFilter]})` : ""}`}</span>
+            <span>{districtFilter === "all" ? td("allDistricts") : `${districtFilter}${DISTRICTS[districtFilter] ? ` (${DISTRICTS[districtFilter]})` : ""}`}</span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Districts</SelectItem>
+            <SelectItem value="all">{td("allDistricts")}</SelectItem>
             {districts.map((d) => (
               <SelectItem key={d} value={d}>
                 {d} {DISTRICTS[d] ? `(${DISTRICTS[d]})` : ""}
@@ -123,8 +126,8 @@ export function TopCitiesTable({ cities, totalCount }: { cities: CityScoreRow[];
             ))}
           </SelectContent>
         </Select>
-        <span className="text-xs text-muted-foreground ml-auto">
-          Showing {Math.min(filtered.length, 50)} of {displayTotal} cities (min. 5,000 pop.)
+        <span className="text-xs text-muted-foreground ms-auto">
+          {td("showing", { shown: Math.min(filtered.length, 50), total: displayTotal })}
         </span>
       </div>
 
@@ -132,23 +135,23 @@ export function TopCitiesTable({ cities, totalCount }: { cities: CityScoreRow[];
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10 whitespace-nowrap">#</TableHead>
-              <TableHead className="whitespace-nowrap">City</TableHead>
-              <TableHead className="hidden md:table-cell whitespace-nowrap">District</TableHead>
-              <TableHead className={`text-right ${thClass}`} onClick={() => handleSort("score")}>
-                Score<SortIcon column="score" activeColumn={sortBy} dir={sortDir} />
+              <TableHead className="w-10 whitespace-nowrap">{t("rank")}</TableHead>
+              <TableHead className="whitespace-nowrap">{t("city")}</TableHead>
+              <TableHead className="hidden md:table-cell whitespace-nowrap">{t("district")}</TableHead>
+              <TableHead className={`text-end ${thClass}`} onClick={() => handleSort("score")}>
+                {t("score")}<SortIcon column="score" activeColumn={sortBy} dir={sortDir} />
               </TableHead>
-              <TableHead className={`text-right ${thClass}`} onClick={() => handleSort("population")}>
-                Population<SortIcon column="population" activeColumn={sortBy} dir={sortDir} />
+              <TableHead className={`text-end ${thClass}`} onClick={() => handleSort("population")}>
+                {t("population")}<SortIcon column="population" activeColumn={sortBy} dir={sortDir} />
               </TableHead>
-              <TableHead className={`text-right ${thClass}`} onClick={() => handleSort("price")}>
-                Avg ₪/m²<SortIcon column="price" activeColumn={sortBy} dir={sortDir} />
+              <TableHead className={`text-end ${thClass}`} onClick={() => handleSort("price")}>
+                {t("avgPrice")}<SortIcon column="price" activeColumn={sortBy} dir={sortDir} />
               </TableHead>
               <TableHead className={`hidden md:table-cell ${thClass}`} onClick={() => handleSort("renewal")}>
-                Renewal<SortIcon column="renewal" activeColumn={sortBy} dir={sortDir} />
+                {t("renewal")}<SortIcon column="renewal" activeColumn={sortBy} dir={sortDir} />
               </TableHead>
               <TableHead className={`hidden md:table-cell ${thClass}`} onClick={() => handleSort("construction")}>
-                Construction<SortIcon column="construction" activeColumn={sortBy} dir={sortDir} />
+                {t("construction")}<SortIcon column="construction" activeColumn={sortBy} dir={sortDir} />
               </TableHead>
             </TableRow>
           </TableHeader>
@@ -167,16 +170,16 @@ export function TopCitiesTable({ cities, totalCount }: { cities: CityScoreRow[];
                 <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                   {city.district}
                   {DISTRICTS[city.district] && (
-                    <span className="text-xs ml-1">({DISTRICTS[city.district]})</span>
+                    <span className="text-xs ms-1">({DISTRICTS[city.district]})</span>
                   )}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-end">
                   <ScoreBadge score={city.investmentScore} />
                 </TableCell>
-                <TableCell className="text-right text-sm">
+                <TableCell className="text-end text-sm">
                   {city.population.toLocaleString()}
                 </TableCell>
-                <TableCell className="text-right text-sm">
+                <TableCell className="text-end text-sm">
                   {city.mechirLaMishtakenAvgPricePerMeter
                     ? `₪${Math.round(city.mechirLaMishtakenAvgPricePerMeter).toLocaleString()}`
                     : "—"}

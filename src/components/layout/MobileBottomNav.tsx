@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname as useNextPathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
 import {
   LayoutDashboard,
   Map,
@@ -10,26 +10,29 @@ import {
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Link } from "@/i18n/routing";
 
 const TABS = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/explore", label: "Map", icon: Map },
-  { href: "/city-view", label: "City", icon: Building2 },
-  { href: "/projects", label: "Projects", icon: Hammer },
-  { href: "/compare", label: "Compare", icon: Scale },
-];
+  { href: "/", key: "dashboard", icon: LayoutDashboard },
+  { href: "/explore", key: "map", icon: Map },
+  { href: "/city-view", key: "city", icon: Building2 },
+  { href: "/projects", key: "projects", icon: Hammer },
+  { href: "/compare", key: "compare", icon: Scale },
+] as const;
 
 export function MobileBottomNav() {
-  const pathname = usePathname();
+  const t = useTranslations("nav");
+  const locale = useLocale();
+  const pathname = useNextPathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden pb-[env(safe-area-inset-bottom)]">
+    <nav className="fixed bottom-0 inset-x-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:hidden pb-[env(safe-area-inset-bottom)]">
       <div className="flex h-16 items-center justify-around">
         {TABS.map((tab) => {
           const isActive =
             tab.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(tab.href);
+              ? pathname === `/${locale}` || pathname === `/${locale}/`
+              : pathname.startsWith(`/${locale}${tab.href}`);
           const Icon = tab.icon;
 
           return (
@@ -50,7 +53,7 @@ export function MobileBottomNav() {
                   isActive ? "font-semibold" : "font-medium"
                 )}
               >
-                {tab.label}
+                {t(tab.key)}
               </span>
             </Link>
           );

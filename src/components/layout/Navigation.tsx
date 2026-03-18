@@ -1,22 +1,32 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Info } from "lucide-react";
+import { usePathname as useNextPathname } from "next/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { Info, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PoweredByBrand } from "@/components/brand/JustAIitLogo";
+import { Link, useRouter, usePathname } from "@/i18n/routing";
 
-const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", labelHe: "לוח בקרה" },
-  { href: "/explore", label: "Map", labelHe: "מפה" },
-  { href: "/city-view", label: "City", labelHe: "עיר" },
-  { href: "/projects", label: "Projects", labelHe: "פרויקטים" },
-  { href: "/compare", label: "Compare", labelHe: "השוואה" },
-  { href: "/methodology", label: "Method", labelHe: "מתודולוגיה" },
-];
+const NAV_KEYS = [
+  { href: "/", key: "dashboard" },
+  { href: "/explore", key: "map" },
+  { href: "/city-view", key: "city" },
+  { href: "/projects", key: "projects" },
+  { href: "/compare", key: "compare" },
+  { href: "/methodology", key: "method" },
+] as const;
 
 export function Navigation() {
-  const pathname = usePathname();
+  const t = useTranslations("nav");
+  const locale = useLocale();
+  const router = useRouter();
+  const intlPathname = usePathname();
+  const nextPathname = useNextPathname();
+
+  const switchLocale = () => {
+    const newLocale = locale === "he" ? "en" : "he";
+    router.replace(intlPathname, { locale: newLocale });
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -27,16 +37,16 @@ export function Navigation() {
             Home<span className="brand-gradient-text">AI</span>
           </span>
           <span className="hidden lg:inline text-xs text-muted-foreground font-normal">
-            Israel Investment Finder
+            {t("tagline")}
           </span>
         </Link>
 
         {/* Desktop navigation */}
-        <nav className="ml-4 lg:ml-8 hidden md:flex items-center gap-0.5">
-          {NAV_ITEMS.map((item) => {
+        <nav className="ms-4 lg:ms-8 hidden md:flex items-center gap-0.5">
+          {NAV_KEYS.map((item) => {
             const isActive = item.href === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.href);
+              ? nextPathname === `/${locale}` || nextPathname === `/${locale}/`
+              : nextPathname.startsWith(`/${locale}${item.href}`);
 
             return (
               <Link
@@ -49,15 +59,25 @@ export function Navigation() {
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
               >
-                {item.label}
+                {t(item.key)}
               </Link>
             );
           })}
         </nav>
 
-        {/* Right: powered by JustAIit (desktop) + Method icon (mobile) */}
-        <div className="ml-auto flex items-center gap-2">
-          {/* Powered by JustAIit — hidden on md (tablet) where nav is tight, shown on mobile + lg+ */}
+        {/* Right side */}
+        <div className="ms-auto flex items-center gap-2">
+          {/* Language switcher */}
+          <button
+            onClick={switchLocale}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title={locale === "he" ? "Switch to English" : "עבור לעברית"}
+          >
+            <Globe className="size-3.5" />
+            <span>{locale === "he" ? "EN" : "עב"}</span>
+          </button>
+
+          {/* Powered by JustAIit — hidden on md, shown on mobile + lg+ */}
           <div className="md:hidden lg:block">
             <PoweredByBrand />
           </div>
@@ -68,7 +88,7 @@ export function Navigation() {
               href="/methodology"
               className={cn(
                 "flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg transition-colors duration-150",
-                pathname === "/methodology"
+                nextPathname.includes("/methodology")
                   ? "text-[#7C3AED]"
                   : "text-muted-foreground hover:text-foreground"
               )}

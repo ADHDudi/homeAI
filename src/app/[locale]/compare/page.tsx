@@ -1,9 +1,19 @@
 import { getAllCityProfiles } from "@/lib/data/aggregator";
 import { CompareClient } from "@/components/compare/CompareClient";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ComparePage() {
+export default async function ComparePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations("compare");
+
   const profiles = await getAllCityProfiles();
 
   const cities = profiles
@@ -38,9 +48,9 @@ export default async function ComparePage() {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Compare Cities</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Side-by-side comparison of investment metrics
+          {t("subtitle")}
         </p>
       </div>
       <CompareClient cities={cities} />

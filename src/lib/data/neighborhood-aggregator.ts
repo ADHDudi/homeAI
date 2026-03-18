@@ -1,6 +1,7 @@
 import { fetchRawData, type RawCityData } from "./aggregator";
 import { safeNumber, safeTrim, normalizeCityName } from "./normalizers";
 import { itmToWgs84 } from "@/lib/utils/coordinates";
+import { batchGeocode } from "@/lib/utils/geocode";
 import type {
   CityNeighborhoodData,
   MechirProject,
@@ -56,15 +57,31 @@ function extractRenewalProjects(records: Record<string, unknown>[]): RenewalProj
     existingUnits: safeNumber(r["YachadKayam"]),
     additionalUnits: safeNumber(r["YachadTosafti"]),
     inExecution: safeTrim(r["Bebitzua"]) === "כן",
+    status: safeTrim(r["Status"]) || undefined,
+    mapLink: safeTrim(r["KishurLaMapa"]) || undefined,
   }));
 }
 
-function extractConstructionSites(records: Record<string, unknown>[]): ConstructionSite[] {
-  return records.map((r) => ({
+async function extractConstructionSites(
+  records: Record<string, unknown>[],
+  cityName: string,
+): Promise<ConstructionSite[]> {
+  const sites = records.map((r) => ({
     address: safeTrim(r["site_name"]),
     buildTypes: safeTrim(r["build_types"]),
     executor: safeTrim(r["executor_name"]),
     hasCranes: safeTrim(r["has_cranes"]) === "כן" || safeTrim(r["has_cranes"]) === "yes",
+  }));
+
+  const coords = await batchGeocode(
+    sites.map((s) => s.address),
+    cityName,
+  );
+
+  return sites.map((s, i) => ({
+    ...s,
+    lat: coords[i]?.lat,
+    lng: coords[i]?.lng,
   }));
 }
 
@@ -168,10 +185,12 @@ export async function getCityNeighborhoodData(
   const mechirProjects = extractMechirProjects(mechirRecords);
   const neighborhoodPricing = groupByNeighborhood(mechirProjects);
 
+  const constructionSites = await extractConstructionSites(constructionRecords, cityName);
+
   return {
     neighborhoodPricing,
     renewalProjects: extractRenewalProjects(renewalRecords),
-    constructionSites: extractConstructionSites(constructionRecords),
+    constructionSites,
     greenBuildings: extractGreenBuildings(greenBuildingRecords),
     busStops: extractBusStops(busStopRecords),
     bankBranches: extractBankBranches(bankRecords),

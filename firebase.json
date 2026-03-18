@@ -1,0 +1,13 @@
+{
+  "apphosting": {
+    "backendId": "homeai-israel",
+    "rootDir": "ADHDudi/homeAI",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ]
+  }
+}

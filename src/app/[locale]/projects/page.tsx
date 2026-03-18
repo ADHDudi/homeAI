@@ -3,17 +3,28 @@ import { RESOURCE_IDS } from "@/config/datasets";
 import { safeNumber, safeTrim } from "@/lib/data/normalizers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export const revalidate = 300;
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations("projects");
+  const tStats = await getTranslations("stats");
+
   let renewalProjects: Array<Record<string, unknown>> = [];
   let error: string | null = null;
 
   try {
     renewalProjects = await fetchAllRecords(RESOURCE_IDS.urbanRenewal);
   } catch (e) {
-    error = e instanceof Error ? e.message : "Failed to load projects";
+    error = e instanceof Error ? e.message : t("failedToLoad");
   }
 
   // Group by status
@@ -29,9 +40,9 @@ export default async function ProjectsPage() {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Urban Renewal Projects</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Browse all {total} urban renewal projects across Israel
+          {t("subtitle", { count: total })}
         </p>
       </div>
 
@@ -44,7 +55,7 @@ export default async function ProjectsPage() {
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Total Projects</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{tStats("totalProjects")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-xl md:text-2xl font-bold">{total}</div>
@@ -52,7 +63,7 @@ export default async function ProjectsPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">In Execution</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{t("inExecution")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-xl md:text-2xl font-bold text-emerald-600">
@@ -62,7 +73,7 @@ export default async function ProjectsPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Additional Units</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{tStats("additionalUnitsLabel")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-xl md:text-2xl font-bold">
@@ -88,31 +99,31 @@ export default async function ProjectsPage() {
                       <CardTitle className="text-base">{city}</CardTitle>
                       {isActive && (
                         <Badge variant="default" className="bg-emerald-600">
-                          Active
+                          {t("active")}
                         </Badge>
                       )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Existing units:</span>
+                      <span className="text-muted-foreground">{t("existingUnits")}</span>
                       <span className="font-medium">{existing.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Additional units:</span>
+                      <span className="text-muted-foreground">{t("additionalUnits")}</span>
                       <span className="font-medium text-emerald-600">
                         +{additional.toLocaleString()}
                       </span>
                     </div>
                     {track && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Track:</span>
+                        <span className="text-muted-foreground">{t("track")}</span>
                         <span className="font-medium">{track}</span>
                       </div>
                     )}
                     {status && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status:</span>
+                        <span className="text-muted-foreground">{t("status")}</span>
                         <span className="font-medium text-xs">{status}</span>
                       </div>
                     )}
@@ -124,7 +135,7 @@ export default async function ProjectsPage() {
 
           {renewalProjects.length > 30 && (
             <p className="text-sm text-muted-foreground text-center">
-              Showing 30 of {renewalProjects.length} projects
+              {t("showing", { shown: 30, total: renewalProjects.length })}
             </p>
           )}
         </>

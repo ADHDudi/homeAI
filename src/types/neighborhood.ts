@@ -30,6 +30,8 @@ export interface RenewalProject {
   existingUnits: number;
   additionalUnits: number;
   inExecution: boolean;
+  status?: string;
+  mapLink?: string;
 }
 
 /** An active construction site in the city. */
@@ -38,6 +40,8 @@ export interface ConstructionSite {
   buildTypes: string;
   executor: string;
   hasCranes: boolean;
+  lat?: number;
+  lng?: number;
 }
 
 /** A building with a green certification (Israeli Standard 5281). */

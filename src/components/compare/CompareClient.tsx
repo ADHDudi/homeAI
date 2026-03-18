@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,20 +42,22 @@ function CompareRow({
   valueB,
   higherIsBetter = true,
   infoLabel,
+  naLabel = "N/A",
 }: {
   label: string;
-  valueA: string | number;
-  valueB: string | number;
+  valueA: string | number | null;
+  valueB: string | number | null;
   higherIsBetter?: boolean;
   infoLabel?: string;
+  naLabel?: string;
 }) {
-  const numA = typeof valueA === "number" ? valueA : parseFloat(String(valueA).replace(/[^0-9.-]/g, ""));
-  const numB = typeof valueB === "number" ? valueB : parseFloat(String(valueB).replace(/[^0-9.-]/g, ""));
+  const numA = valueA === null ? NaN : typeof valueA === "number" ? valueA : parseFloat(String(valueA).replace(/[^0-9.-]/g, ""));
+  const numB = valueB === null ? NaN : typeof valueB === "number" ? valueB : parseFloat(String(valueB).replace(/[^0-9.-]/g, ""));
   const hasComparison = !isNaN(numA) && !isNaN(numB) && numA !== numB;
   const aWins = higherIsBetter ? numA > numB : numA < numB;
 
-  const displayA = typeof valueA === "number" ? valueA.toLocaleString() : valueA;
-  const displayB = typeof valueB === "number" ? valueB.toLocaleString() : valueB;
+  const displayA = valueA === null ? naLabel : typeof valueA === "number" ? valueA.toLocaleString() : valueA;
+  const displayB = valueB === null ? naLabel : typeof valueB === "number" ? valueB.toLocaleString() : valueB;
   const aWinClass = hasComparison && aWins ? "text-emerald-600" : "";
   const bWinClass = hasComparison && !aWins ? "text-emerald-600" : "";
 
@@ -70,11 +73,11 @@ function CompareRow({
       </div>
       {/* Desktop 3-col */}
       <div className="hidden sm:grid grid-cols-3 gap-4 py-3 border-b last:border-0">
-        <div className={`text-right font-medium ${aWinClass}`}>
+        <div className={`text-end font-medium ${aWinClass}`}>
           {displayA}
         </div>
         <div className="text-center text-sm text-muted-foreground flex items-center justify-center">{label}{infoLabel && <SubScoreInfoIcon label={infoLabel} />}</div>
-        <div className={`text-left font-medium ${bWinClass}`}>
+        <div className={`text-start font-medium ${bWinClass}`}>
           {displayB}
         </div>
       </div>
@@ -93,6 +96,7 @@ function CityPicker({
   selectedCode: string;
   onSelect: (code: string) => void;
 }) {
+  const t = useTranslations("cityView");
   const [search, setSearch] = useState("");
   const selected = cities.find((c) => c.cityCode === Number(selectedCode));
 
@@ -110,7 +114,7 @@ function CityPicker({
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {label}
           {selected && (
-            <span className="ml-2 text-foreground font-semibold text-base">
+            <span className="ms-2 text-foreground font-semibold text-base">
               {selected.cityName}
             </span>
           )}
@@ -118,12 +122,12 @@ function CityPicker({
       </CardHeader>
       <CardContent className="space-y-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search city / חיפוש עיר..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-8"
+            className="ps-8"
           />
         </div>
         <div className="max-h-[240px] overflow-y-auto rounded-md border divide-y">
@@ -131,18 +135,18 @@ function CityPicker({
             <button
               key={c.cityCode}
               onClick={() => onSelect(String(c.cityCode))}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+              className={`w-full flex items-center gap-3 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/50 ${
                 c.cityCode === Number(selectedCode) ? "bg-primary/10 font-medium" : ""
               }`}
             >
-              <span className="text-xs text-muted-foreground w-5 text-right shrink-0">{i + 1}</span>
+              <span className="text-xs text-muted-foreground w-5 text-end shrink-0">{i + 1}</span>
               <span className="flex-1 truncate">{c.cityName}</span>
               <span className="text-xs text-muted-foreground shrink-0">{c.district}</span>
               <ScoreBadge score={c.investmentScore} />
             </button>
           ))}
           {filtered.length === 0 && (
-            <div className="px-3 py-4 text-center text-sm text-muted-foreground">No cities found</div>
+            <div className="px-3 py-4 text-center text-sm text-muted-foreground">{t("noCitiesFound")}</div>
           )}
         </div>
       </CardContent>
@@ -151,6 +155,8 @@ function CityPicker({
 }
 
 export function CompareClient({ cities }: { cities: CompareCity[] }) {
+  const t = useTranslations("compare");
+  const ts = useTranslations("scores");
   const [codeA, setCodeA] = useState("");
   const [codeB, setCodeB] = useState("");
 
@@ -161,14 +167,14 @@ export function CompareClient({ cities }: { cities: CompareCity[] }) {
     <div className="space-y-6">
       {/* City selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        <CityPicker label="City A" cities={cities} selectedCode={codeA} onSelect={setCodeA} />
-        <CityPicker label="City B" cities={cities} selectedCode={codeB} onSelect={setCodeB} />
+        <CityPicker label={t("cityA")} cities={cities} selectedCode={codeA} onSelect={setCodeA} />
+        <CityPicker label={t("cityB")} cities={cities} selectedCode={codeB} onSelect={setCodeB} />
       </div>
 
       {/* Quick picks */}
       {!cityA && !cityB && (
         <div className="text-center py-8">
-          <p className="text-muted-foreground mb-4">Select two cities to compare, or try these popular comparisons:</p>
+          <p className="text-muted-foreground mb-4">{t("selectTwoCities")}</p>
           <div className="flex flex-wrap justify-center gap-2">
             {[
               { a: cities[0], b: cities[1] },
@@ -185,7 +191,7 @@ export function CompareClient({ cities }: { cities: CompareCity[] }) {
                   }}
                   className="px-3 py-1.5 text-sm border rounded-lg hover:bg-muted transition-colors"
                 >
-                  {pair.a.cityName} vs {pair.b.cityName}
+                  {pair.a.cityName} {t("vs")} {pair.b.cityName}
                 </button>
               ))}
           </div>
@@ -220,68 +226,68 @@ export function CompareClient({ cities }: { cities: CompareCity[] }) {
           {/* Sub-scores */}
           <Card>
             <CardHeader>
-              <CardTitle>Score Breakdown</CardTitle>
+              <CardTitle>{t("scoreBreakdown")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <CompareRow label="Overall Score" valueA={cityA.investmentScore} valueB={cityB.investmentScore} />
-              <CompareRow label="Development (25%)" infoLabel="Development Momentum" valueA={cityA.scoreBreakdown.development} valueB={cityB.scoreBreakdown.development} />
-              <CompareRow label="Demand (20%)" infoLabel="Demand Signal" valueA={cityA.scoreBreakdown.demand} valueB={cityB.scoreBreakdown.demand} />
-              <CompareRow label="Price (20%)" infoLabel="Price Attractiveness" valueA={cityA.scoreBreakdown.price} valueB={cityB.scoreBreakdown.price} />
-              <CompareRow label="Infrastructure (15%)" infoLabel="Infrastructure" valueA={cityA.scoreBreakdown.infrastructure} valueB={cityB.scoreBreakdown.infrastructure} />
-              <CompareRow label="Municipal (10%)" infoLabel="Municipal Health" valueA={cityA.scoreBreakdown.municipal} valueB={cityB.scoreBreakdown.municipal} />
-              <CompareRow label="Environment (10%)" infoLabel="Environment" valueA={cityA.scoreBreakdown.environment} valueB={cityB.scoreBreakdown.environment} />
+              <CompareRow label={t("overallScore")} valueA={cityA.investmentScore} valueB={cityB.investmentScore} />
+              <CompareRow label={`${ts("development")} (${ts("developmentWeight")})`} infoLabel="Development Momentum" valueA={cityA.scoreBreakdown.development} valueB={cityB.scoreBreakdown.development} />
+              <CompareRow label={`${ts("demand")} (${ts("demandWeight")})`} infoLabel="Demand Signal" valueA={cityA.scoreBreakdown.demand} valueB={cityB.scoreBreakdown.demand} />
+              <CompareRow label={`${ts("price")} (${ts("priceWeight")})`} infoLabel="Price Attractiveness" valueA={cityA.scoreBreakdown.price} valueB={cityB.scoreBreakdown.price} />
+              <CompareRow label={`${ts("infrastructure")} (${ts("infrastructureWeight")})`} infoLabel="Infrastructure" valueA={cityA.scoreBreakdown.infrastructure} valueB={cityB.scoreBreakdown.infrastructure} />
+              <CompareRow label={`${ts("municipal")} (${ts("municipalWeight")})`} infoLabel="Municipal Health" valueA={cityA.scoreBreakdown.municipal} valueB={cityB.scoreBreakdown.municipal} />
+              <CompareRow label={`${ts("environment")} (${ts("environmentWeight")})`} infoLabel="Environment" valueA={cityA.scoreBreakdown.environment} valueB={cityB.scoreBreakdown.environment} />
             </CardContent>
           </Card>
 
           {/* Development */}
           <Card>
             <CardHeader>
-              <CardTitle>Development</CardTitle>
+              <CardTitle>{t("development")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <CompareRow label="Renewal Projects" valueA={cityA.urbanRenewalProjects} valueB={cityB.urbanRenewalProjects} />
-              <CompareRow label="In Execution" valueA={cityA.urbanRenewalInExecution} valueB={cityB.urbanRenewalInExecution} />
-              <CompareRow label="Additional Units" valueA={cityA.urbanRenewalUnitsAdditional} valueB={cityB.urbanRenewalUnitsAdditional} />
-              <CompareRow label="Construction Sites" valueA={cityA.constructionSites} valueB={cityB.constructionSites} />
-              <CompareRow label="Active Cranes" valueA={cityA.constructionWithCranes} valueB={cityB.constructionWithCranes} />
-              <CompareRow label="Housing Pipeline" valueA={cityA.housingInventoryUnits} valueB={cityB.housingInventoryUnits} />
+              <CompareRow label={t("renewalProjects")} valueA={cityA.urbanRenewalProjects} valueB={cityB.urbanRenewalProjects} />
+              <CompareRow label={t("inExecution")} valueA={cityA.urbanRenewalInExecution} valueB={cityB.urbanRenewalInExecution} />
+              <CompareRow label={t("additionalUnits")} valueA={cityA.urbanRenewalUnitsAdditional} valueB={cityB.urbanRenewalUnitsAdditional} />
+              <CompareRow label={t("constructionSites")} valueA={cityA.constructionSites} valueB={cityB.constructionSites} />
+              <CompareRow label={t("activeCranes")} valueA={cityA.constructionWithCranes} valueB={cityB.constructionWithCranes} />
+              <CompareRow label={t("housingPipeline")} valueA={cityA.housingInventoryUnits} valueB={cityB.housingInventoryUnits} />
             </CardContent>
           </Card>
 
           {/* Pricing */}
           <Card>
             <CardHeader>
-              <CardTitle>Pricing & Demand</CardTitle>
+              <CardTitle>{t("pricingDemand")}</CardTitle>
             </CardHeader>
             <CardContent>
               <CompareRow
-                label="Avg ₪/m²"
+                label={t("avgPricePerMeter")}
                 valueA={cityA.mechirLaMishtakenAvgPricePerMeter ? `₪${Math.round(cityA.mechirLaMishtakenAvgPricePerMeter).toLocaleString()}` : "N/A"}
                 valueB={cityB.mechirLaMishtakenAvgPricePerMeter ? `₪${Math.round(cityB.mechirLaMishtakenAvgPricePerMeter).toLocaleString()}` : "N/A"}
                 higherIsBetter={false}
               />
               <CompareRow
-                label="Subscriber/Winner"
+                label={t("subscriberWinner")}
                 valueA={cityA.subscriberToWinnerRatio ? `${cityA.subscriberToWinnerRatio.toFixed(1)}x` : "N/A"}
                 valueB={cityB.subscriberToWinnerRatio ? `${cityB.subscriberToWinnerRatio.toFixed(1)}x` : "N/A"}
               />
-              <CompareRow label="Mechir Projects" valueA={cityA.mechirLaMishtakenProjects} valueB={cityB.mechirLaMishtakenProjects} />
+              <CompareRow label={t("mechirProjects")} valueA={cityA.mechirLaMishtakenProjects} valueB={cityB.mechirLaMishtakenProjects} />
             </CardContent>
           </Card>
 
           {/* Infrastructure & Demographics */}
           <Card>
             <CardHeader>
-              <CardTitle>Infrastructure & Demographics</CardTitle>
+              <CardTitle>{t("infraDemographics")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <CompareRow label="Population" valueA={cityA.population} valueB={cityB.population} />
-              <CompareRow label="Young Adults" valueA={cityA.youngAdultRatio ? `${(cityA.youngAdultRatio * 100).toFixed(1)}%` : "N/A"} valueB={cityB.youngAdultRatio ? `${(cityB.youngAdultRatio * 100).toFixed(1)}%` : "N/A"} />
-              <CompareRow label="Bus Stops" valueA={cityA.busStopCount || "N/A"} valueB={cityB.busStopCount || "N/A"} />
-              <CompareRow label="Bank Branches" valueA={cityA.bankBranchCount || "N/A"} valueB={cityB.bankBranchCount || "N/A"} />
-              <CompareRow label="Green Buildings" valueA={cityA.greenBuildingCount || "N/A"} valueB={cityB.greenBuildingCount || "N/A"} />
+              <CompareRow label={t("population")} valueA={cityA.population} valueB={cityB.population} />
+              <CompareRow label={t("youngAdults")} valueA={cityA.youngAdultRatio ? `${(cityA.youngAdultRatio * 100).toFixed(1)}%` : "N/A"} valueB={cityB.youngAdultRatio ? `${(cityB.youngAdultRatio * 100).toFixed(1)}%` : "N/A"} />
+              <CompareRow label={t("busStops")} valueA={cityA.busStopCount || "N/A"} valueB={cityB.busStopCount || "N/A"} />
+              <CompareRow label={t("bankBranches")} valueA={cityA.bankBranchCount || "N/A"} valueB={cityB.bankBranchCount || "N/A"} />
+              <CompareRow label={t("greenBuildings")} valueA={cityA.greenBuildingCount || "N/A"} valueB={cityB.greenBuildingCount || "N/A"} />
               <CompareRow
-                label="Contaminated Sites"
+                label={t("contaminatedSites")}
                 valueA={cityA.contaminatedSiteCount || "N/A"}
                 valueB={cityB.contaminatedSiteCount || "N/A"}
                 higherIsBetter={false}
@@ -292,13 +298,13 @@ export function CompareClient({ cities }: { cities: CompareCity[] }) {
           {/* Municipal Finances */}
           <Card>
             <CardHeader>
-              <CardTitle>Municipal Finances</CardTitle>
+              <CardTitle>{t("municipalFinances")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <CompareRow label="Budget Balance" valueA={cityA.municipalBudgetSurplus != null ? `₪${cityA.municipalBudgetSurplus.toLocaleString()}K` : "N/A"} valueB={cityB.municipalBudgetSurplus != null ? `₪${cityB.municipalBudgetSurplus.toLocaleString()}K` : "N/A"} />
-              <CompareRow label="Annual Income" valueA={cityA.municipalTotalIncome != null ? `₪${cityA.municipalTotalIncome.toLocaleString()}K` : "N/A"} valueB={cityB.municipalTotalIncome != null ? `₪${cityB.municipalTotalIncome.toLocaleString()}K` : "N/A"} />
-              <CompareRow label="Annual Expenses" valueA={cityA.municipalTotalExpenses != null ? `₪${cityA.municipalTotalExpenses.toLocaleString()}K` : "N/A"} valueB={cityB.municipalTotalExpenses != null ? `₪${cityB.municipalTotalExpenses.toLocaleString()}K` : "N/A"} />
-              <CompareRow label="Loan Burden" valueA={cityA.municipalLoanBurden != null ? `₪${cityA.municipalLoanBurden.toLocaleString()}K` : "N/A"} valueB={cityB.municipalLoanBurden != null ? `₪${cityB.municipalLoanBurden.toLocaleString()}K` : "N/A"} higherIsBetter={false} />
+              <CompareRow label={t("budgetBalance")} valueA={cityA.municipalBudgetSurplus != null ? `₪${cityA.municipalBudgetSurplus.toLocaleString()}K` : "N/A"} valueB={cityB.municipalBudgetSurplus != null ? `₪${cityB.municipalBudgetSurplus.toLocaleString()}K` : "N/A"} />
+              <CompareRow label={t("annualIncome")} valueA={cityA.municipalTotalIncome != null ? `₪${cityA.municipalTotalIncome.toLocaleString()}K` : "N/A"} valueB={cityB.municipalTotalIncome != null ? `₪${cityB.municipalTotalIncome.toLocaleString()}K` : "N/A"} />
+              <CompareRow label={t("annualExpenses")} valueA={cityA.municipalTotalExpenses != null ? `₪${cityA.municipalTotalExpenses.toLocaleString()}K` : "N/A"} valueB={cityB.municipalTotalExpenses != null ? `₪${cityB.municipalTotalExpenses.toLocaleString()}K` : "N/A"} />
+              <CompareRow label={t("loanBurden")} valueA={cityA.municipalLoanBurden != null ? `₪${cityA.municipalLoanBurden.toLocaleString()}K` : "N/A"} valueB={cityB.municipalLoanBurden != null ? `₪${cityB.municipalLoanBurden.toLocaleString()}K` : "N/A"} higherIsBetter={false} />
             </CardContent>
           </Card>
         </div>

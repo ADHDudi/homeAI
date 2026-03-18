@@ -1,10 +1,20 @@
 import { Suspense } from "react";
 import { getAllCityProfiles } from "@/lib/data/aggregator";
 import { CityViewClient } from "@/components/city-view/CityViewClient";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
 export const revalidate = 300;
 
-export default async function CityViewPage() {
+export default async function CityViewPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const t = await getTranslations("cityView");
+
   const profiles = await getAllCityProfiles();
 
   // Sort by investment score descending – pass full profiles so
@@ -16,9 +26,9 @@ export default async function CityViewPage() {
   return (
     <div className="space-y-4 md:space-y-6 lg:space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">City View</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          Select a city to explore its investment profile, map, and neighborhood data
+          {t("subtitle")}
         </p>
       </div>
       <Suspense>

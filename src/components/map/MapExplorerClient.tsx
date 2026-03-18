@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { Input } from "@/components/ui/input";
 import {
@@ -8,10 +9,10 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
+import { Link } from "@/i18n/routing";
 import type { CityScoreRow } from "@/types/city";
 import { DISTRICTS } from "@/config/datasets";
 
@@ -30,25 +31,27 @@ const CityMap = dynamic(
 
 type MapLayer = "score" | "renewal" | "construction" | "price";
 
-const LAYER_LABELS: Record<MapLayer, string> = {
-  score: "Layer: Investment Score",
-  renewal: "Layer: Urban Renewal",
-  construction: "Layer: Construction",
-  price: "Layer: Price / m²",
-};
-
-const MIN_SCORE_LABELS: Record<string, string> = {
-  "0": "Min Score: Any",
-  "45": "Min Score: 45+",
-  "60": "Min Score: 60+",
-  "75": "Min Score: 75+",
-};
-
 export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
+  const t = useTranslations("map");
+  const td = useTranslations("dashboard");
   const [layer, setLayer] = useState<MapLayer>("score");
   const [districtFilter, setDistrictFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [minScore, setMinScore] = useState(0);
+
+  const layerLabels: Record<MapLayer, string> = {
+    score: t("layerScore"),
+    renewal: t("layerRenewal"),
+    construction: t("layerConstruction"),
+    price: t("layerPrice"),
+  };
+
+  const minScoreLabels: Record<string, string> = {
+    "0": t("minScoreAny"),
+    "45": t("minScore45"),
+    "60": t("minScore60"),
+    "75": t("minScore75"),
+  };
 
   const districts = useMemo(() => {
     return [...new Set(cities.map((c) => c.district))].filter(Boolean).sort();
@@ -87,28 +90,28 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
       {/* Controls */}
       <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
         <Input
-          placeholder="Search city / חיפוש עיר..."
+          placeholder={t("searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full sm:max-w-xs"
         />
         <Select value={layer} onValueChange={(v) => v && setLayer(v as MapLayer)}>
           <SelectTrigger className="w-full sm:w-[200px]">
-            <span>{LAYER_LABELS[layer]}</span>
+            <span>{layerLabels[layer]}</span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="score">Layer: Investment Score</SelectItem>
-            <SelectItem value="renewal">Layer: Urban Renewal</SelectItem>
-            <SelectItem value="construction">Layer: Construction</SelectItem>
-            <SelectItem value="price">Layer: Price / m²</SelectItem>
+            <SelectItem value="score">{t("layerScore")}</SelectItem>
+            <SelectItem value="renewal">{t("layerRenewal")}</SelectItem>
+            <SelectItem value="construction">{t("layerConstruction")}</SelectItem>
+            <SelectItem value="price">{t("layerPrice")}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={districtFilter} onValueChange={(v) => v && setDistrictFilter(v)}>
           <SelectTrigger className="w-full sm:w-[200px]">
-            <span>{districtFilter === "all" ? "All Districts" : `${districtFilter}${DISTRICTS[districtFilter] ? ` (${DISTRICTS[districtFilter]})` : ""}`}</span>
+            <span>{districtFilter === "all" ? td("allDistricts") : `${districtFilter}${DISTRICTS[districtFilter] ? ` (${DISTRICTS[districtFilter]})` : ""}`}</span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Districts</SelectItem>
+            <SelectItem value="all">{td("allDistricts")}</SelectItem>
             {districts.map((d) => (
               <SelectItem key={d} value={d}>
                 {d} {DISTRICTS[d] ? `(${DISTRICTS[d]})` : ""}
@@ -121,13 +124,13 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
           onValueChange={(v) => v && setMinScore(Number(v))}
         >
           <SelectTrigger className="w-full sm:w-[170px]">
-            <span>{MIN_SCORE_LABELS[String(minScore)]}</span>
+            <span>{minScoreLabels[String(minScore)]}</span>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="0">Min Score: Any</SelectItem>
-            <SelectItem value="45">Min Score: 45+</SelectItem>
-            <SelectItem value="60">Min Score: 60+</SelectItem>
-            <SelectItem value="75">Min Score: 75+</SelectItem>
+            <SelectItem value="0">{t("minScoreAny")}</SelectItem>
+            <SelectItem value="45">{t("minScore45")}</SelectItem>
+            <SelectItem value="60">{t("minScore60")}</SelectItem>
+            <SelectItem value="75">{t("minScore75")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -137,7 +140,7 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Cities on Map
+              {t("citiesOnMap")}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -147,7 +150,7 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Avg Score
+              {t("avgScore")}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -157,7 +160,7 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Renewal Projects
+              {t("renewalProjects")}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -167,7 +170,7 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-xs font-medium text-muted-foreground">
-              Construction Sites
+              {t("constructionSites")}
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
@@ -183,12 +186,12 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
       <div className="grid md:grid-cols-3 gap-4">
         <Card className="md:col-span-3">
           <CardHeader>
-            <CardTitle className="text-base">Top Opportunities on Map</CardTitle>
+            <CardTitle className="text-base">{t("topOpportunities")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {filtered.slice(0, 9).map((city) => (
-                <a
+                <Link
                   key={city.cityCode}
                   href={`/city-view?city=${city.cityCode}`}
                   className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 hover:shadow-sm transition-all duration-150"
@@ -196,11 +199,11 @@ export function MapExplorerClient({ cities }: { cities: CityScoreRow[] }) {
                   <div>
                     <div className="font-medium">{city.cityName}</div>
                     <div className="text-xs text-muted-foreground">
-                      {city.district} · Pop {city.population.toLocaleString()}
+                      {city.district} · {city.population.toLocaleString()}
                     </div>
                   </div>
                   <ScoreBadge score={city.investmentScore} />
-                </a>
+                </Link>
               ))}
             </div>
           </CardContent>

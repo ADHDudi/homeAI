@@ -1,21 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import "leaflet.markercluster";
-import type { GreenBuilding, PointOfInterest } from "@/types/neighborhood";
+import type { GreenBuilding, PointOfInterest, ConstructionSite, RenewalProject } from "@/types/neighborhood";
 import { escapeHtml } from "@/lib/utils/escapeHtml";
 
-type LayerType = "greenBuildings" | "busStops" | "bankBranches";
+type LayerType = "greenBuildings" | "busStops" | "bankBranches" | "constructionSites" | "renewalProjects";
 
 interface NeighborhoodMapProps {
   center: { lat: number; lng: number };
   greenBuildings: GreenBuilding[];
   busStops: PointOfInterest[];
   bankBranches: PointOfInterest[];
+  constructionSites: ConstructionSite[];
+  renewalProjects: RenewalProject[];
 }
 
 function createIcon(emoji: string, bgColor: string): L.DivIcon {
@@ -36,16 +39,12 @@ function createIcon(emoji: string, bgColor: string): L.DivIcon {
   });
 }
 
-const ICONS = {
+const ICONS: Record<LayerType, L.DivIcon> = {
   greenBuildings: createIcon("🌿", "#059669"),
   busStops: createIcon("🚌", "#2563eb"),
   bankBranches: createIcon("🏦", "#d97706"),
-};
-
-const LAYER_CONFIG: Record<LayerType, { label: string; emoji: string; color: string }> = {
-  greenBuildings: { label: "Green Buildings", emoji: "🌿", color: "#059669" },
-  busStops: { label: "Bus Stops", emoji: "🚌", color: "#2563eb" },
-  bankBranches: { label: "Bank Branches", emoji: "🏦", color: "#d97706" },
+  constructionSites: createIcon("🏗️", "#dc2626"),
+  renewalProjects: createIcon("🔄", "#7c3aed"),
 };
 
 export function NeighborhoodMap({
@@ -53,20 +52,63 @@ export function NeighborhoodMap({
   greenBuildings,
   busStops,
   bankBranches,
+  constructionSites,
+  renewalProjects,
 }: NeighborhoodMapProps) {
+  const t = useTranslations("map");
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerGroupsRef = useRef<Record<LayerType, L.MarkerClusterGroup | null>>({
     greenBuildings: null,
     busStops: null,
     bankBranches: null,
+    constructionSites: null,
+    renewalProjects: null,
   });
 
   const [activeLayers, setActiveLayers] = useState<Record<LayerType, boolean>>({
     greenBuildings: true,
     busStops: true,
     bankBranches: true,
+    constructionSites: true,
+    renewalProjects: true,
   });
+
+  // Translated layer config
+  const layerConfig: Record<LayerType, { label: string; emoji: string; color: string }> = useMemo(() => ({
+    greenBuildings: { label: t("greenBuildings"), emoji: "🌿", color: "#059669" },
+    busStops: { label: t("busStops"), emoji: "🚌", color: "#2563eb" },
+    bankBranches: { label: t("bankBranches"), emoji: "🏦", color: "#d97706" },
+    constructionSites: { label: t("construction"), emoji: "🏗️", color: "#dc2626" },
+    renewalProjects: { label: t("urbanRenewal"), emoji: "🔄", color: "#7c3aed" },
+  }), [t]);
+
+  // Pre-translate popup strings for use in raw HTML
+  const popupStrings = useMemo(() => ({
+    greenBuilding: t("popupGreenBuilding"),
+    constructionSite: t("popupConstructionSite"),
+    activeCranes: t("popupActiveCranes"),
+    urbanRenewal: t("popupUrbanRenewal"),
+    inExecution: t("popupInExecution"),
+    planned: t("popupPlanned"),
+    viewGovMap: t("popupViewGovMap"),
+  }), [t]);
+
+  // Filter to only geocoded items
+  const geoConstructionSites = useMemo(
+    () => constructionSites.filter((s) => s.lat != null && s.lng != null),
+    [constructionSites],
+  );
+
+  // Place renewal projects at city center with slight offset so they fan out
+  const renewalWithCoords = useMemo(
+    () => renewalProjects.map((p, i) => ({
+      ...p,
+      lat: center.lat + (Math.sin(i * 2.39996) * 0.002),
+      lng: center.lng + (Math.cos(i * 2.39996) * 0.002),
+    })),
+    [renewalProjects, center.lat, center.lng],
+  );
 
   // Initialize map
   useEffect(() => {
@@ -83,8 +125,7 @@ export function NeighborhoodMap({
       maxZoom: 18,
     }).addTo(map);
 
-    // Create cluster groups for each layer
-    const createClusterGroup = (type: LayerType) => {
+    const createClusterGroup = () => {
       const group = (L as unknown as { markerClusterGroup: (opts: Record<string, unknown>) => L.MarkerClusterGroup }).markerClusterGroup({
         maxClusterRadius: 40,
         spiderfyOnMaxZoom: true,
@@ -95,9 +136,11 @@ export function NeighborhoodMap({
       return group;
     };
 
-    layerGroupsRef.current.greenBuildings = createClusterGroup("greenBuildings");
-    layerGroupsRef.current.busStops = createClusterGroup("busStops");
-    layerGroupsRef.current.bankBranches = createClusterGroup("bankBranches");
+    layerGroupsRef.current.greenBuildings = createClusterGroup();
+    layerGroupsRef.current.busStops = createClusterGroup();
+    layerGroupsRef.current.bankBranches = createClusterGroup();
+    layerGroupsRef.current.constructionSites = createClusterGroup();
+    layerGroupsRef.current.renewalProjects = createClusterGroup();
 
     mapRef.current = map;
 
@@ -110,26 +153,26 @@ export function NeighborhoodMap({
   // Populate markers
   useEffect(() => {
     const groups = layerGroupsRef.current;
-    if (!groups.greenBuildings || !groups.busStops || !groups.bankBranches) return;
+    if (!groups.greenBuildings) return;
 
     // Green buildings
-    groups.greenBuildings.clearLayers();
+    groups.greenBuildings!.clearLayers();
     for (const gb of greenBuildings) {
       const marker = L.marker([gb.lat, gb.lng], { icon: ICONS.greenBuildings });
       marker.bindPopup(
         `<div style="direction:rtl;text-align:right;min-width:160px;">
-          <strong>🌿 Green Building</strong><br/>
+          <strong>🌿 ${escapeHtml(popupStrings.greenBuilding)}</strong><br/>
           ${escapeHtml(gb.street)} ${escapeHtml(gb.number)}<br/>
-          ${gb.floors > 0 ? `${escapeHtml(gb.floors)} floors` : ""}
-          ${gb.units > 0 ? ` · ${escapeHtml(gb.units)} units` : ""}
-          ${gb.score > 0 ? `<br/>Score: ${escapeHtml(gb.score)}` : ""}
+          ${gb.floors > 0 ? `${gb.floors} ${escapeHtml(t("popupFloors", { count: gb.floors }))}` : ""}
+          ${gb.units > 0 ? ` · ${gb.units} ${escapeHtml(t("popupUnits", { count: gb.units }))}` : ""}
+          ${gb.score > 0 ? `<br/>${escapeHtml(t("popupScore", { score: gb.score }))}` : ""}
         </div>`
       );
-      groups.greenBuildings.addLayer(marker);
+      groups.greenBuildings!.addLayer(marker);
     }
 
     // Bus stops
-    groups.busStops.clearLayers();
+    groups.busStops!.clearLayers();
     for (const bs of busStops) {
       const marker = L.marker([bs.lat, bs.lng], { icon: ICONS.busStops });
       marker.bindPopup(
@@ -138,11 +181,11 @@ export function NeighborhoodMap({
           ${bs.details ? `<br/>${escapeHtml(bs.details)}` : ""}
         </div>`
       );
-      groups.busStops.addLayer(marker);
+      groups.busStops!.addLayer(marker);
     }
 
     // Bank branches
-    groups.bankBranches.clearLayers();
+    groups.bankBranches!.clearLayers();
     for (const bb of bankBranches) {
       const marker = L.marker([bb.lat, bb.lng], { icon: ICONS.bankBranches });
       marker.bindPopup(
@@ -151,9 +194,47 @@ export function NeighborhoodMap({
           ${bb.details ? `<br/>${escapeHtml(bb.details)}` : ""}
         </div>`
       );
-      groups.bankBranches.addLayer(marker);
+      groups.bankBranches!.addLayer(marker);
     }
-  }, [greenBuildings, busStops, bankBranches]);
+
+    // Construction sites (geocoded only)
+    groups.constructionSites!.clearLayers();
+    for (const cs of geoConstructionSites) {
+      const marker = L.marker([cs.lat!, cs.lng!], { icon: ICONS.constructionSites });
+      marker.bindPopup(
+        `<div style="direction:rtl;text-align:right;min-width:180px;">
+          <strong>🏗️ ${escapeHtml(popupStrings.constructionSite)}</strong><br/>
+          ${escapeHtml(cs.address)}<br/>
+          ${cs.buildTypes ? `${escapeHtml(t("popupType", { type: cs.buildTypes }))}<br/>` : ""}
+          ${cs.executor ? `${escapeHtml(t("popupExecutor", { name: cs.executor }))}<br/>` : ""}
+          ${cs.hasCranes ? `<span style="color:#dc2626;">● ${escapeHtml(popupStrings.activeCranes)}</span>` : ""}
+        </div>`
+      );
+      groups.constructionSites!.addLayer(marker);
+    }
+
+    // Renewal projects (placed at city center area)
+    groups.renewalProjects!.clearLayers();
+    for (const rp of renewalWithCoords) {
+      const marker = L.marker([rp.lat, rp.lng], { icon: ICONS.renewalProjects });
+      const mapLinkHtml = rp.mapLink
+        ? `<br/><a href="${escapeHtml(rp.mapLink)}" target="_blank" rel="noopener" style="color:#7c3aed;">${escapeHtml(popupStrings.viewGovMap)}</a>`
+        : "";
+      marker.bindPopup(
+        `<div style="direction:rtl;text-align:right;min-width:200px;">
+          <strong>🔄 ${escapeHtml(popupStrings.urbanRenewal)}</strong><br/>
+          ${escapeHtml(rp.complexName)}<br/>
+          ${escapeHtml(t("popupExisting", { existing: rp.existingUnits, additional: rp.additionalUnits }))}<br/>
+          ${rp.inExecution
+            ? `<span style="color:#059669;">● ${escapeHtml(popupStrings.inExecution)}</span>`
+            : `<span style="color:#d97706;">○ ${escapeHtml(popupStrings.planned)}</span>`}
+          ${rp.status ? `<br/>${escapeHtml(t("popupStatus", { status: rp.status }))}` : ""}
+          ${mapLinkHtml}
+        </div>`
+      );
+      groups.renewalProjects!.addLayer(marker);
+    }
+  }, [greenBuildings, busStops, bankBranches, geoConstructionSites, renewalWithCoords, popupStrings, t]);
 
   // Toggle layer visibility
   useEffect(() => {
@@ -176,7 +257,19 @@ export function NeighborhoodMap({
     setActiveLayers((prev) => ({ ...prev, [layer]: !prev[layer] }));
   };
 
-  const totalPoints = greenBuildings.length + busStops.length + bankBranches.length;
+  const getLayerCount = (key: LayerType): number => {
+    switch (key) {
+      case "greenBuildings": return greenBuildings.length;
+      case "busStops": return busStops.length;
+      case "bankBranches": return bankBranches.length;
+      case "constructionSites": return geoConstructionSites.length;
+      case "renewalProjects": return renewalProjects.length;
+    }
+  };
+
+  const totalPoints =
+    greenBuildings.length + busStops.length + bankBranches.length +
+    geoConstructionSites.length + renewalProjects.length;
 
   return (
     <div className="relative">
@@ -184,13 +277,10 @@ export function NeighborhoodMap({
 
       {/* Layer toggles / empty-state overlay */}
       {totalPoints > 0 ? (
-        <div className="absolute top-3 right-3 bg-background/95 backdrop-blur border rounded-lg p-2 z-[1000] space-y-1">
-          {(Object.keys(LAYER_CONFIG) as LayerType[]).map((key) => {
-            const config = LAYER_CONFIG[key];
-            const count =
-              key === "greenBuildings" ? greenBuildings.length :
-              key === "busStops" ? busStops.length :
-              bankBranches.length;
+        <div className="absolute top-3 end-3 bg-background/95 backdrop-blur border rounded-lg p-2 z-[1000] space-y-1">
+          {(Object.keys(layerConfig) as LayerType[]).map((key) => {
+            const config = layerConfig[key];
+            const count = getLayerCount(key);
             if (count === 0) return null;
 
             return (
@@ -213,7 +303,7 @@ export function NeighborhoodMap({
         </div>
       ) : (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background/90 backdrop-blur border rounded-lg px-4 py-2 z-[1000] text-xs text-muted-foreground">
-          No geo-located markers available — map shows city location
+          {t("noMarkers")}
         </div>
       )}
     </div>

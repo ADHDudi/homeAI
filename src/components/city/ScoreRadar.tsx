@@ -9,21 +9,25 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import type { ScoreBreakdown } from "@/types/city";
 
-const LABELS: Record<string, string> = {
-  development: "Development",
-  demand: "Demand",
-  price: "Price",
-  infrastructure: "Infrastructure",
-  municipal: "Municipal",
-  environment: "Environment",
-};
+const KEYS: (keyof Omit<ScoreBreakdown, "overall">)[] = [
+  "development",
+  "demand",
+  "price",
+  "infrastructure",
+  "municipal",
+  "environment",
+];
 
 export function ScoreRadar({ breakdown }: { breakdown: ScoreBreakdown }) {
-  const data = Object.entries(LABELS).map(([key, label]) => ({
-    metric: label,
-    score: breakdown[key as keyof ScoreBreakdown],
+  const t = useTranslations("scores");
+  const tc = useTranslations("common");
+  const data = KEYS.map((key) => ({
+    metric: t(key),
+    score: breakdown[key] ?? 0, // Use 0 for chart rendering when N/A
+    isNA: breakdown[key] === null,
   }));
 
   return (
@@ -32,7 +36,11 @@ export function ScoreRadar({ breakdown }: { breakdown: ScoreBreakdown }) {
         <PolarGrid />
         <PolarAngleAxis dataKey="metric" tick={{ fontSize: 12 }} />
         <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
-        <Tooltip formatter={(value) => [`${value}`, "Score"]} />
+        <Tooltip formatter={(value, _name, props) => {
+          const entry = props?.payload;
+          if (entry?.isNA) return [tc("na"), t("investmentScore")];
+          return [`${value}`, t("investmentScore")];
+        }} />
         <Radar
           dataKey="score"
           stroke="#2563eb"

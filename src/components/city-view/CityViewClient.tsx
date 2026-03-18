@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useLocale } from "next-intl";
 import dynamic from "next/dynamic";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -39,6 +41,7 @@ function CitySelector({
   onSelect: (code: string) => void;
   selectedCity: CityProfile | null;
 }) {
+  const t = useTranslations("cityView");
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState(!!selectedCode);
 
@@ -61,9 +64,9 @@ function CitySelector({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground">
-            Select City
+            {t("selectCity")}
             {selectedCity && (
-              <span className="ml-2 text-foreground font-semibold text-base">
+              <span className="ms-2 text-foreground font-semibold text-base">
                 {selectedCity.cityName}
               </span>
             )}
@@ -73,7 +76,7 @@ function CitySelector({
               onClick={() => setCollapsed((c) => !c)}
               className="text-xs text-primary hover:underline"
             >
-              {collapsed ? "Change" : "Collapse"}
+              {collapsed ? t("change") : t("collapse")}
             </button>
           )}
         </div>
@@ -81,12 +84,12 @@ function CitySelector({
       {!collapsed && (
         <CardContent className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search city / חיפוש עיר..."
+              placeholder={t("searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
+              className="ps-8"
             />
           </div>
           <div className="max-h-[280px] overflow-y-auto rounded-md border divide-y">
@@ -94,13 +97,13 @@ function CitySelector({
               <button
                 key={c.cityCode}
                 onClick={() => handleSelect(String(c.cityCode))}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 ${
+                className={`w-full flex items-center gap-3 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/50 ${
                   c.cityCode === Number(selectedCode)
                     ? "bg-primary/10 font-medium"
                     : ""
                 }`}
               >
-                <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
+                <span className="text-xs text-muted-foreground w-5 text-end shrink-0">
                   {i + 1}
                 </span>
                 <span className="flex-1 truncate">{c.cityName}</span>
@@ -112,7 +115,7 @@ function CitySelector({
             ))}
             {filtered.length === 0 && (
               <div className="px-3 py-4 text-center text-sm text-muted-foreground">
-                No cities found
+                {t("noCitiesFound")}
               </div>
             )}
           </div>
@@ -125,6 +128,10 @@ function CitySelector({
 export function CityViewClient({ cities }: { cities: CityProfile[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations("cityView");
+  const ts = useTranslations("stats");
+  const tsc = useTranslations("scores");
+  const locale = useLocale();
 
   // Initialise from ?city=CODE query param (enables deep-linking)
   const [selectedCode, setSelectedCode] = useState(
@@ -138,9 +145,9 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
   const selectCity = useCallback(
     (code: string) => {
       setSelectedCode(code);
-      router.replace(`/city-view?city=${code}`, { scroll: false });
+      router.replace(`/${locale}/city-view?city=${code}`, { scroll: false });
     },
-    [router]
+    [router, locale]
   );
 
   const city = useMemo(
@@ -195,7 +202,9 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
   const geoCount = neighborhoodData
     ? neighborhoodData.greenBuildings.length +
       neighborhoodData.busStops.length +
-      neighborhoodData.bankBranches.length
+      neighborhoodData.bankBranches.length +
+      neighborhoodData.constructionSites.filter((s) => s.lat != null && s.lng != null).length +
+      neighborhoodData.renewalProjects.length
     : 0;
 
   const neighborhoodCount = neighborhoodData
@@ -222,10 +231,10 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
         <div className="text-center py-16">
           <div className="text-6xl mb-4">🏙️</div>
           <h2 className="text-xl font-semibold mb-2">
-            Select a city to explore
+            {t("selectCityToExplore")}
           </h2>
           <p className="text-muted-foreground mb-6">
-            View investment profile, neighborhood map, and detailed data
+            {t("viewInvestmentProfile")}
           </p>
 
           {/* Quick picks */}
@@ -237,7 +246,7 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
                 className="px-4 py-2 text-sm border rounded-lg hover:bg-muted transition-colors"
               >
                 {c.cityName}
-                <span className="ml-1 text-muted-foreground">
+                <span className="ms-1 text-muted-foreground">
                   ({c.investmentScore})
                 </span>
               </button>
@@ -259,13 +268,13 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
                 {city.district}
                 {DISTRICTS[city.district] && ` (${DISTRICTS[city.district]})`}
                 {" · "}
-                Population: {city.population.toLocaleString()}
+                {ts("population")}: {city.population.toLocaleString()}
               </p>
             </div>
             <div className="text-center">
               <ScoreBadge score={city.investmentScore} size="lg" showLabel />
               <p className="text-xs text-muted-foreground mt-1">
-                Investment Score
+                {tsc("investmentScore")}
               </p>
             </div>
           </div>
@@ -276,16 +285,16 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
               href="#overview"
               className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
-              Overview
+              {t("overview")}
             </a>
             {!neighborhoodLoading && neighborhoodCount > 0 && (
               <a
                 href="#neighborhood"
                 className="px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2"
               >
-                Neighborhood Detail
+                {t("neighborhoodDetail")}
                 <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
-                  {neighborhoodCount.toLocaleString()} data points
+                  {t("dataPoints", { count: neighborhoodCount.toLocaleString() })}
                 </span>
               </a>
             )}
@@ -299,15 +308,15 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>City Map — Points of Interest</CardTitle>
+                  <CardTitle>{t("cityMap")}</CardTitle>
                   {neighborhoodLoading && (
                     <span className="text-xs text-muted-foreground animate-pulse">
-                      Loading map data...
+                      {t("loadingMapData")}
                     </span>
                   )}
                   {!neighborhoodLoading && geoCount > 0 && (
                     <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
-                      {geoCount.toLocaleString()} map markers
+                      {t("mapMarkers", { count: geoCount.toLocaleString() })}
                     </span>
                   )}
                 </div>
@@ -322,6 +331,8 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
                     greenBuildings={neighborhoodData.greenBuildings}
                     busStops={neighborhoodData.busStops}
                     bankBranches={neighborhoodData.bankBranches}
+                    constructionSites={neighborhoodData.constructionSites}
+                    renewalProjects={neighborhoodData.renewalProjects}
                   />
                 ) : null}
               </CardContent>
@@ -332,7 +343,7 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Score Breakdown</CardTitle>
+                <CardTitle>{tsc("scoreBreakdown")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ScoreRadar breakdown={city.scoreBreakdown} />
@@ -341,29 +352,31 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
 
             <Card>
               <CardHeader>
-                <CardTitle>Sub-Scores</CardTitle>
+                <CardTitle>{tsc("subScores")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {[
-                  { label: "Development Momentum", score: city.scoreBreakdown.development, weight: "25%" },
-                  { label: "Demand Signal", score: city.scoreBreakdown.demand, weight: "20%" },
-                  { label: "Price Attractiveness", score: city.scoreBreakdown.price, weight: "20%" },
-                  { label: "Infrastructure", score: city.scoreBreakdown.infrastructure, weight: "15%" },
-                  { label: "Municipal Health", score: city.scoreBreakdown.municipal, weight: "10%" },
-                  { label: "Environment", score: city.scoreBreakdown.environment, weight: "10%" },
+                  { label: tsc("development"), score: city.scoreBreakdown.development, weight: tsc("developmentWeight") },
+                  { label: tsc("demand"), score: city.scoreBreakdown.demand, weight: tsc("demandWeight") },
+                  { label: tsc("price"), score: city.scoreBreakdown.price, weight: tsc("priceWeight") },
+                  { label: tsc("infrastructure"), score: city.scoreBreakdown.infrastructure, weight: tsc("infrastructureWeight") },
+                  { label: tsc("municipal"), score: city.scoreBreakdown.municipal, weight: tsc("municipalWeight") },
+                  { label: tsc("environment"), score: city.scoreBreakdown.environment, weight: tsc("environmentWeight") },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between">
                     <div className="flex items-center">
                       <span className="text-sm font-medium">{item.label}</span>
-                      <span className="text-xs text-muted-foreground ml-2">({item.weight})</span>
+                      <span className="text-xs text-muted-foreground ms-2">({item.weight})</span>
                       <SubScoreInfoIcon label={item.label} />
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${item.score}%` }}
-                        />
+                        {item.score !== null && (
+                          <div
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ width: `${item.score}%` }}
+                          />
+                        )}
                       </div>
                       <ScoreBadge score={item.score} size="sm" />
                     </div>
@@ -376,80 +389,80 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
           {/* Stat Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Urban Renewal Projects"
+              label={ts("urbanRenewalProjects")}
               value={city.urbanRenewalProjects}
-              subtitle={`${city.urbanRenewalInExecution} in execution`}
+              subtitle={ts("inExecution", { count: city.urbanRenewalInExecution })}
             />
             <StatCard
-              label="Additional Units (Renewal)"
+              label={ts("additionalUnits")}
               value={city.urbanRenewalUnitsAdditional.toLocaleString()}
-              subtitle={`from ${city.urbanRenewalUnitsExisting.toLocaleString()} existing`}
+              subtitle={ts("fromExisting", { count: city.urbanRenewalUnitsExisting.toLocaleString() })}
             />
             <StatCard
-              label="Construction Sites"
+              label={ts("constructionSites")}
               value={city.constructionSites}
-              subtitle={`${city.constructionWithCranes} with active cranes`}
+              subtitle={ts("withActiveCranes", { count: city.constructionWithCranes })}
             />
             <StatCard
-              label="Housing Pipeline"
+              label={ts("housingPipeline")}
               value={city.housingInventoryUnits.toLocaleString()}
-              subtitle="potential units"
+              subtitle={ts("potentialUnits")}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Avg Price/m² (Mechir LaMishtaken)"
+              label={ts("avgPricePerMeter")}
               value={
                 city.mechirLaMishtakenAvgPricePerMeter
                   ? `₪${Math.round(city.mechirLaMishtakenAvgPricePerMeter).toLocaleString()}`
                   : "N/A"
               }
-              subtitle={`${city.mechirLaMishtakenProjects} projects`}
+              subtitle={ts("projects", { count: city.mechirLaMishtakenProjects })}
             />
             <StatCard
-              label="Subscriber/Winner Ratio"
+              label={ts("subscriberWinnerRatio")}
               value={
                 city.subscriberToWinnerRatio
                   ? `${city.subscriberToWinnerRatio.toFixed(1)}x`
                   : "N/A"
               }
-              subtitle="Demand indicator"
+              subtitle={ts("demandIndicator")}
             />
             <StatCard
-              label="Bus Stops"
+              label={ts("busStops")}
               value={city.busStopCount || "N/A"}
-              subtitle="Transit accessibility"
+              subtitle={ts("transitAccessibility")}
             />
             <StatCard
-              label="Bank Branches"
+              label={ts("bankBranches")}
               value={city.bankBranchCount || "N/A"}
-              subtitle="Financial infrastructure"
+              subtitle={ts("financialInfrastructure")}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Green Buildings"
+              label={ts("greenBuildings")}
               value={city.greenBuildingCount || "N/A"}
               subtitle={
                 city.greenBuildingAvgScore
-                  ? `Avg score: ${city.greenBuildingAvgScore.toFixed(1)}`
+                  ? ts("avgScore", { score: city.greenBuildingAvgScore.toFixed(1) })
                   : undefined
               }
             />
             <StatCard
-              label="Contaminated Sites"
+              label={ts("contaminatedSites")}
               value={city.contaminatedSiteCount || "N/A"}
-              subtitle={city.contaminatedSiteCount ? `${city.contaminatedSitesRemediated} remediated` : undefined}
+              subtitle={city.contaminatedSiteCount ? ts("remediated", { count: city.contaminatedSitesRemediated }) : undefined}
             />
             <StatCard
-              label="Young Adult Ratio"
+              label={ts("youngAdultRatio")}
               value={city.youngAdultRatio ? `${(city.youngAdultRatio * 100).toFixed(1)}%` : "N/A"}
-              subtitle="Age 19-45"
+              subtitle={ts("age1945")}
             />
             <StatCard
-              label="Population"
+              label={ts("population")}
               value={city.population.toLocaleString()}
               subtitle={city.district}
             />
@@ -458,31 +471,31 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
           {/* Municipal Finances */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Budget Balance"
+              label={ts("budgetBalance")}
               value={city.municipalBudgetSurplus != null ? `₪${city.municipalBudgetSurplus.toLocaleString()}K` : "N/A"}
-              subtitle="Accumulated surplus/deficit"
+              subtitle={ts("accumulatedSurplus")}
             />
             <StatCard
-              label="Annual Income"
+              label={ts("annualIncome")}
               value={city.municipalTotalIncome != null ? `₪${city.municipalTotalIncome.toLocaleString()}K` : "N/A"}
-              subtitle="Regular budget"
+              subtitle={ts("regularBudget")}
             />
             <StatCard
-              label="Annual Expenses"
+              label={ts("annualExpenses")}
               value={city.municipalTotalExpenses != null ? `₪${city.municipalTotalExpenses.toLocaleString()}K` : "N/A"}
-              subtitle="Regular budget"
+              subtitle={ts("regularBudget")}
             />
             <StatCard
-              label="Loan Burden"
+              label={ts("loanBurden")}
               value={city.municipalLoanBurden != null ? `₪${city.municipalLoanBurden.toLocaleString()}K` : "N/A"}
-              subtitle="Outstanding loans"
+              subtitle={ts("outstandingLoans")}
             />
           </div>
 
           {/* Age Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle>Age Distribution</CardTitle>
+              <CardTitle>{t("ageDistribution")}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -536,10 +549,10 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
 
               <div id="neighborhood" className="scroll-mt-16">
                 <h2 className="text-2xl font-bold tracking-tight">
-                  Neighborhood Detail
+                  {t("neighborhoodDetail")}
                 </h2>
                 <p className="text-muted-foreground mt-1">
-                  Sub-city level data from government datasets
+                  {t("subCityData")}
                 </p>
               </div>
 
@@ -547,7 +560,7 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
               <Card>
                 <CardHeader>
                   <CardTitle>
-                    Pricing by Neighborhood (Mechir LaMishtaken)
+                    {t("pricingByNeighborhood")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
