@@ -1,7 +1,7 @@
 {
   "apphosting": {
     "backendId": "homeai-israel",
-    "rootDir": "ADHDudi/homeAI",
+    "rootDir": ".",
     "ignore": [
       "node_modules",
       ".git",

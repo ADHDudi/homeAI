@@ -1,0 +1,8 @@
+runConfig:
+  runtime: nodejs22
+  concurrency: 100
+  cpu: 1
+  memoryMiB: 512
+env:
+  - variable: NEXT_PUBLIC_BASE_URL
+    value: https://homeai-israel--homeai-israel.europe-west4.hosted.app
