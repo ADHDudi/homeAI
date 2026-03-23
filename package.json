@@ -4,6 +4,9 @@
   "description": "HomeAI Israel Investment Finder — Real-time investment analysis platform for Israeli cities, powered by government open data",
   "author": "JustAIit",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
