@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import type { CityScoreRow } from "@/types/city";
 import { getCityCoordinates } from "@/data/cityCoordinates";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
@@ -49,7 +52,13 @@ export function CityMap({ cities, layer }: CityMapProps) {
       maxZoom: 18,
     }).addTo(map);
 
-    markersRef.current = L.layerGroup().addTo(map);
+    markersRef.current = (L as unknown as { markerClusterGroup: (opts?: Record<string, unknown>) => L.LayerGroup }).markerClusterGroup({
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      disableClusteringAtZoom: 11,
+    });
+    map.addLayer(markersRef.current);
     mapRef.current = map;
 
     return () => {

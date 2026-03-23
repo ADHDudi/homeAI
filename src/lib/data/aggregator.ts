@@ -34,6 +34,12 @@ export interface RawCityData {
 let cachedData: { data: RawCityData; timestamp: number } | null = null;
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes (data fetches are expensive)
 
+// Inflight dedup: coalesce concurrent cache-miss fetches into a single request
+let inflightFetch: Promise<RawCityData> | null = null;
+
+// Scored profiles cache: avoid re-running calculateInvestmentScore on same raw data
+let cachedProfiles: { profiles: CityProfile[]; rawRef: RawCityData } | null = null;
+
 // ── Persistent disk cache ──
 // Saves successful API data to a JSON file so the app works even when
 // data.gov.il is down. File lives alongside .next/ in the project root.
@@ -126,6 +132,20 @@ export async function fetchRawData(): Promise<RawCityData> {
     return cachedData.data;
   }
 
+  // Coalesce concurrent requests: if a fetch is already in progress, share it
+  if (inflightFetch) {
+    return inflightFetch;
+  }
+
+  inflightFetch = fetchRawDataInternal();
+  try {
+    return await inflightFetch;
+  } finally {
+    inflightFetch = null;
+  }
+}
+
+async function fetchRawDataInternal(): Promise<RawCityData> {
   // Fetch all datasets in parallel - gracefully handle individual failures
   const safeFetch = async (
     ...args: Parameters<typeof fetchAllRecords>
@@ -388,6 +408,11 @@ function buildCityProfile(
 export async function getAllCityProfiles(): Promise<CityProfile[]> {
   const raw = await fetchRawData();
 
+  // Return cached scored profiles if raw data hasn't changed
+  if (cachedProfiles && cachedProfiles.rawRef === raw) {
+    return cachedProfiles.profiles;
+  }
+
   // Build profiles for all cities with population > 5000
   const profiles: CityProfile[] = [];
   for (const [cityName, popRecord] of raw.population) {
@@ -397,10 +422,23 @@ export async function getAllCityProfiles(): Promise<CityProfile[]> {
   }
 
   // Calculate scores using percentile ranking
-  return calculateInvestmentScore(profiles);
+  const scored = calculateInvestmentScore(profiles);
+  cachedProfiles = { profiles: scored, rawRef: raw };
+  return scored;
 }
 
 export async function getCityProfile(cityCode: number): Promise<CityProfile | null> {
   const profiles = await getAllCityProfiles();
   return profiles.find((p) => p.cityCode === cityCode) ?? null;
+}
+
+/**
+ * Lightweight city code → name resolver. Avoids triggering full scoring.
+ */
+export async function getCityNameByCode(cityCode: number): Promise<string | null> {
+  const raw = await fetchRawData();
+  for (const [name, rec] of raw.population) {
+    if (safeNumber(rec["סמל_ישוב"]) === cityCode) return name;
+  }
+  return null;
 }

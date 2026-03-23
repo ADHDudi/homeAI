@@ -2,7 +2,7 @@ import { getAllCityProfiles } from "@/lib/data/aggregator";
 import { CompareClient } from "@/components/compare/CompareClient";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 min ISR
 
 export default async function ComparePage({
   params,

@@ -10,8 +10,7 @@ import { NextResponse } from "next/server";
 import { getAllCityProfiles } from "@/lib/data/aggregator";
 import type { CityScoreRow } from "@/types/city";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 300; // 5 min
+export const revalidate = 300; // 5 min ISR
 
 export async function GET() {
   try {

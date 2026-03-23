@@ -3,7 +3,7 @@ import type { CityScoreRow } from "@/types/city";
 import { MapExplorerClient } from "@/components/map/MapExplorerClient";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300; // 5 min ISR
 
 export default async function ExplorePage({
   params,

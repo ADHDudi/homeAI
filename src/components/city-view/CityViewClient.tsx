@@ -11,9 +11,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
 import { StatCard } from "@/components/shared/StatCard";
-import { ScoreRadar } from "@/components/city/ScoreRadar";
-import { NeighborhoodPricing } from "@/components/city/NeighborhoodPricing";
-import { CityProjectsList } from "@/components/city/CityProjectsList";
+// Lazy-load heavy below-fold components to reduce initial bundle
+const ScoreRadar = dynamic(
+  () => import("@/components/city/ScoreRadar").then((m) => m.ScoreRadar),
+  { ssr: false, loading: () => <div className="h-[300px] bg-muted rounded animate-pulse" /> }
+);
+const NeighborhoodPricing = dynamic(
+  () => import("@/components/city/NeighborhoodPricing").then((m) => m.NeighborhoodPricing),
+  { ssr: false, loading: () => <div className="h-[200px] bg-muted rounded animate-pulse" /> }
+);
+const CityProjectsList = dynamic(
+  () => import("@/components/city/CityProjectsList").then((m) => m.CityProjectsList),
+  { ssr: false, loading: () => <div className="h-[200px] bg-muted rounded animate-pulse" /> }
+);
 import { SubScoreInfoIcon } from "@/components/shared/SubScoreInfo";
 import { DISTRICTS } from "@/config/datasets";
 import { getCityCoordinates } from "@/data/cityCoordinates";

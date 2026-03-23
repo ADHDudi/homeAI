@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getCityProfile } from "@/lib/data/aggregator";
+import { getCityNameByCode } from "@/lib/data/aggregator";
 import { getCityNeighborhoodData } from "@/lib/data/neighborhood-aggregator";
 import { cityCodeSchema } from "@/lib/validation/schemas";
 
@@ -29,12 +29,12 @@ export async function GET(
     }
 
     const code = parsed.data;
-    const city = await getCityProfile(code);
-    if (!city) {
+    const cityName = await getCityNameByCode(code);
+    if (!cityName) {
       return NextResponse.json({ error: "City not found" }, { status: 404 });
     }
 
-    const data = await getCityNeighborhoodData(city.cityName);
+    const data = await getCityNeighborhoodData(cityName);
     return NextResponse.json(data);
   } catch (error) {
     console.error("[api/city/neighborhood]", error);

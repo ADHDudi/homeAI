@@ -13,7 +13,7 @@
  */
 
 import type { CityProfile, ScoreBreakdown } from "@/types/city";
-import { percentileRank, perCapitaPercentile } from "./percentile";
+import { percentileRank, perCapitaPercentile, sortForPercentile } from "./percentile";
 
 /** Relative weight of each scoring dimension (sums to 1.0). */
 const WEIGHTS: Record<string, number> = {
@@ -63,6 +63,15 @@ function weightedAverage(
   return raw;
 }
 
+/** Compute per-capita values and sort them for percentile ranking. */
+function buildPerCapitaSorted(counts: number[], pops: number[]): number[] {
+  const perCapita = counts.map((c, i) => {
+    const p = pops[i];
+    return p > 0 ? (c / p) * 1000 : 0;
+  });
+  return sortForPercentile(perCapita);
+}
+
 /**
  * Computes investment scores for all city profiles using percentile ranking.
  *
@@ -76,87 +85,99 @@ function weightedAverage(
 export function calculateInvestmentScore(profiles: CityProfile[]): CityProfile[] {
   if (profiles.length === 0) return [];
 
-  // Pre-compute arrays for percentile ranking (only from cities WITH data)
+  // Pre-compute and pre-sort arrays for percentile ranking
   const pops = profiles.map((p) => p.population);
 
   // Development arrays - only from cities with development data
   const devProfiles = profiles.filter((p) => p.hasDevelopmentData);
-  const renewalCounts = devProfiles.map((p) => p.urbanRenewalProjects);
-  const additionalUnits = devProfiles.map((p) => p.urbanRenewalUnitsAdditional);
-  const constructionCounts = devProfiles.map((p) => p.constructionSites);
-  const housingUnits = devProfiles.map((p) => p.housingInventoryUnits);
   const devPops = devProfiles.map((p) => p.population);
+  const renewalPerCapitaSorted = buildPerCapitaSorted(
+    devProfiles.map((p) => p.urbanRenewalProjects), devPops
+  );
+  const additionalPerCapitaSorted = buildPerCapitaSorted(
+    devProfiles.map((p) => p.urbanRenewalUnitsAdditional), devPops
+  );
+  const constructionPerCapitaSorted = buildPerCapitaSorted(
+    devProfiles.map((p) => p.constructionSites), devPops
+  );
+  const housingPerCapitaSorted = buildPerCapitaSorted(
+    devProfiles.map((p) => p.housingInventoryUnits), devPops
+  );
 
-  const subscriberRatios = profiles
-    .map((p) => p.subscriberToWinnerRatio)
-    .filter((r): r is number => r !== null);
-  const youngRatios = profiles.map((p) => p.youngAdultRatio);
-  const prices = profiles
-    .map((p) => p.mechirLaMishtakenAvgPricePerMeter)
-    .filter((p): p is number => p !== null);
+  const subscriberRatiosSorted = sortForPercentile(
+    profiles
+      .map((p) => p.subscriberToWinnerRatio)
+      .filter((r): r is number => r !== null)
+  );
+  const youngRatiosSorted = sortForPercentile(profiles.map((p) => p.youngAdultRatio));
+  const pricesSorted = sortForPercentile(
+    profiles
+      .map((p) => p.mechirLaMishtakenAvgPricePerMeter)
+      .filter((p): p is number => p !== null)
+  );
+
+  // Growth proxy array - pre-compute and sort once
+  const growthProxyValues = profiles.map((p) =>
+    p.ageDistribution.age_65_plus > 0
+      ? p.ageDistribution.age_0_5 / p.ageDistribution.age_65_plus
+      : 0
+  );
+  const growthProxySorted = sortForPercentile(growthProxyValues);
 
   // Infrastructure arrays - only from cities with data
   const infraProfiles = profiles.filter((p) => p.hasInfrastructureData);
-  const bankCounts = infraProfiles.map((p) => p.bankBranchCount);
-  const busCounts = infraProfiles.map((p) => p.busStopCount);
-  const greenCounts = infraProfiles.map((p) => p.greenBuildingCount);
   const infraPops = infraProfiles.map((p) => p.population);
+  const bankPerCapitaSorted = buildPerCapitaSorted(
+    infraProfiles.map((p) => p.bankBranchCount), infraPops
+  );
+  const busPerCapitaSorted = buildPerCapitaSorted(
+    infraProfiles.map((p) => p.busStopCount), infraPops
+  );
+  const greenPerCapitaSorted = buildPerCapitaSorted(
+    infraProfiles.map((p) => p.greenBuildingCount), infraPops
+  );
 
-  // Environment arrays - use all cities (0 contaminated sites = clean city, not missing data)
-  const contaminatedCounts = profiles.map((p) => p.contaminatedSiteCount);
+  // Environment arrays
+  const contaminatedPerCapitaSorted = buildPerCapitaSorted(
+    profiles.map((p) => p.contaminatedSiteCount), pops
+  );
 
   // Municipal finance arrays (only for cities with data)
   const citiesWithFinance = profiles.filter(
     (p) => p.municipalTotalIncome !== null && p.municipalTotalIncome > 0
   );
-  const balanceRatios = citiesWithFinance.map(
-    (p) => (p.municipalBudgetSurplus ?? 0) / p.municipalTotalIncome!
+  const balanceRatiosSorted = sortForPercentile(
+    citiesWithFinance.map((p) => (p.municipalBudgetSurplus ?? 0) / p.municipalTotalIncome!)
   );
-  const debtRatios = citiesWithFinance.map(
-    (p) => (p.municipalLoanBurden ?? 0) / p.municipalTotalIncome!
+  const debtRatiosSorted = sortForPercentile(
+    citiesWithFinance.map((p) => (p.municipalLoanBurden ?? 0) / p.municipalTotalIncome!)
   );
-  const incomePerCapitas = citiesWithFinance.map(
-    (p) => p.municipalTotalIncome! / Math.max(p.population, 1)
+  const incomePerCapitasSorted = sortForPercentile(
+    citiesWithFinance.map((p) => p.municipalTotalIncome! / Math.max(p.population, 1))
   );
 
-  return profiles.map((city) => {
+  return profiles.map((city, cityIdx) => {
     // --- Development Momentum (25%) ---
     let development: number | null = null;
     if (city.hasDevelopmentData) {
-      const renewalPerCapita = perCapitaPercentile(
-        city.urbanRenewalProjects, city.population, renewalCounts, devPops
-      );
-      const additionalPerCapita = perCapitaPercentile(
-        city.urbanRenewalUnitsAdditional, city.population, additionalUnits, devPops
-      );
-      const constructionPerCapita = perCapitaPercentile(
-        city.constructionSites, city.population, constructionCounts, devPops
-      );
-      const housingPerCapita = perCapitaPercentile(
-        city.housingInventoryUnits, city.population, housingUnits, devPops
-      );
+      const renewalPC = perCapitaPercentile(city.urbanRenewalProjects, city.population, renewalPerCapitaSorted);
+      const additionalPC = perCapitaPercentile(city.urbanRenewalUnitsAdditional, city.population, additionalPerCapitaSorted);
+      const constructionPC = perCapitaPercentile(city.constructionSites, city.population, constructionPerCapitaSorted);
+      const housingPC = perCapitaPercentile(city.housingInventoryUnits, city.population, housingPerCapitaSorted);
       development =
-        renewalPerCapita * 0.3 +
-        additionalPerCapita * 0.25 +
-        constructionPerCapita * 0.25 +
-        housingPerCapita * 0.2;
+        renewalPC * 0.3 +
+        additionalPC * 0.25 +
+        constructionPC * 0.25 +
+        housingPC * 0.2;
     }
 
     // --- Demand Signal (20%) ---
-    // Demand always has population data so it's always available
     const subscriberScore = city.subscriberToWinnerRatio !== null
-      ? percentileRank(city.subscriberToWinnerRatio, subscriberRatios)
+      ? percentileRank(city.subscriberToWinnerRatio, subscriberRatiosSorted)
       : 50;
-    const youngAdultScore = percentileRank(city.youngAdultRatio, youngRatios);
+    const youngAdultScore = percentileRank(city.youngAdultRatio, youngRatiosSorted);
     const growthProxy = city.ageDistribution.age_65_plus > 0
-      ? percentileRank(
-          city.ageDistribution.age_0_5 / city.ageDistribution.age_65_plus,
-          profiles.map((p) =>
-            p.ageDistribution.age_65_plus > 0
-              ? p.ageDistribution.age_0_5 / p.ageDistribution.age_65_plus
-              : 0
-          )
-        )
+      ? percentileRank(growthProxyValues[cityIdx], growthProxySorted)
       : 50;
     const demand =
       subscriberScore * 0.4 +
@@ -166,46 +187,39 @@ export function calculateInvestmentScore(profiles: CityProfile[]): CityProfile[]
     // --- Price Attractiveness (20%) ---
     let price: number | null = null;
     if (city.mechirLaMishtakenAvgPricePerMeter !== null) {
-      price = percentileRank(city.mechirLaMishtakenAvgPricePerMeter, prices, true);
+      price = percentileRank(city.mechirLaMishtakenAvgPricePerMeter, pricesSorted, true);
     }
 
     // --- Infrastructure Quality (15%) ---
     let infrastructure: number | null = null;
     if (city.hasInfrastructureData) {
-      const bankPerCapita = perCapitaPercentile(
-        city.bankBranchCount, city.population, bankCounts, infraPops
-      );
-      const busPerCapita = perCapitaPercentile(
-        city.busStopCount, city.population, busCounts, infraPops
-      );
-      const greenScore = perCapitaPercentile(
-        city.greenBuildingCount, city.population, greenCounts, infraPops
-      );
+      const bankPC = perCapitaPercentile(city.bankBranchCount, city.population, bankPerCapitaSorted);
+      const busPC = perCapitaPercentile(city.busStopCount, city.population, busPerCapitaSorted);
+      const greenPC = perCapitaPercentile(city.greenBuildingCount, city.population, greenPerCapitaSorted);
       infrastructure =
-        busPerCapita * 0.4 +
-        bankPerCapita * 0.3 +
-        greenScore * 0.3;
+        busPC * 0.4 +
+        bankPC * 0.3 +
+        greenPC * 0.3;
     }
 
     // --- Municipal Health (10%) ---
     let municipal: number | null = null;
     if (city.municipalTotalIncome !== null && city.municipalTotalIncome > 0) {
       const balanceRatio = (city.municipalBudgetSurplus ?? 0) / city.municipalTotalIncome;
-      const balanceScore = percentileRank(balanceRatio, balanceRatios);
+      const balanceScore = percentileRank(balanceRatio, balanceRatiosSorted);
 
       const debtRatio = (city.municipalLoanBurden ?? 0) / city.municipalTotalIncome;
-      const debtScore = percentileRank(debtRatio, debtRatios, true);
+      const debtScore = percentileRank(debtRatio, debtRatiosSorted, true);
 
       const incomePerCapita = city.municipalTotalIncome / Math.max(city.population, 1);
-      const incomeScore = percentileRank(incomePerCapita, incomePerCapitas);
+      const incomeScore = percentileRank(incomePerCapita, incomePerCapitasSorted);
 
       municipal = balanceScore * 0.4 + debtScore * 0.3 + incomeScore * 0.3;
     }
 
     // --- Environment (10%) ---
-    // 0 contaminated sites = clean city (best score), not missing data
     const environment = perCapitaPercentile(
-      city.contaminatedSiteCount, city.population, contaminatedCounts, pops, true
+      city.contaminatedSiteCount, city.population, contaminatedPerCapitaSorted, true
     );
 
     // Overall: weighted average of available sub-scores only
