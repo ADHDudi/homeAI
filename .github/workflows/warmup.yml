@@ -1,0 +1,32 @@
+name: Cache Warmup
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  warmup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Firebase deployment
+        run: echo "Waiting 4 minutes for Firebase App Hosting to deploy..." && sleep 240
+
+      - name: Warm up cache
+        run: |
+          APP_URL="https://homeai-israel--homeai-israel.europe-west4.hosted.app"
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: hitting warmup endpoint..."
+            response=$(curl -s -w "\n%{http_code}" --max-time 120 "$APP_URL/api/health/warmup")
+            http_code=$(echo "$response" | tail -1)
+            body=$(echo "$response" | head -n -1)
+            echo "HTTP $http_code"
+            echo "$body"
+            if [ "$http_code" = "200" ]; then
+              echo "Warmup successful!"
+              exit 0
+            fi
+            echo "Warmup not ready, waiting 60s before retry..."
+            sleep 60
+          done
+          echo "Warmup failed after 3 attempts"
+          exit 1
