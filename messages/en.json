@@ -108,6 +108,8 @@
     "viewInvestmentProfile": "View investment profile, neighborhood map, and detailed data",
     "overview": "Overview",
     "neighborhoodDetail": "Neighborhood Detail",
+    "neighborhoodLoadError": "Neighborhood data could not be loaded. This may happen on the first request for large cities.",
+    "retry": "Try Again",
     "dataPoints": "{count} data points",
     "cityMap": "City Map — Points of Interest",
     "loadingMapData": "Loading map data...",

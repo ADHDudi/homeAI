@@ -149,7 +149,11 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
   );
   const [neighborhoodData, setNeighborhoodData] =
     useState<CityNeighborhoodData | null>(null);
-  const [neighborhoodLoading, setNeighborhoodLoading] = useState(false);
+  // Start as true if a city is already selected (deep-link) so skeleton shows immediately
+  const [neighborhoodLoading, setNeighborhoodLoading] = useState(
+    () => !!(searchParams.get("city"))
+  );
+  const [neighborhoodError, setNeighborhoodError] = useState(false);
 
   // Sync selection to URL so the link is shareable
   const selectCity = useCallback(
@@ -190,14 +194,15 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
     let cancelled = false;
     setNeighborhoodLoading(true);
     setNeighborhoodData(null);
+    setNeighborhoodError(false);
 
     fetch(`/api/city/${code}/neighborhood`)
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`${res.status}`))))
       .then((data) => {
         if (!cancelled) setNeighborhoodData(data);
       })
       .catch(() => {
-        if (!cancelled) setNeighborhoodData(null);
+        if (!cancelled) setNeighborhoodError(true);
       })
       .finally(() => {
         if (!cancelled) setNeighborhoodLoading(false);
@@ -549,6 +554,30 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
               <div className="space-y-4">
                 <div className="h-8 w-64 bg-muted rounded animate-pulse" />
                 <div className="h-64 bg-muted rounded-lg animate-pulse" />
+              </div>
+            </>
+          )}
+
+          {!neighborhoodLoading && neighborhoodError && (
+            <>
+              <Separator />
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">{t("neighborhoodLoadError")}</p>
+                <button
+                  onClick={() => {
+                    const code = Number(selectedCode);
+                    setNeighborhoodLoading(true);
+                    setNeighborhoodError(false);
+                    fetch(`/api/city/${code}/neighborhood`)
+                      .then((res) => (res.ok ? res.json() : Promise.reject()))
+                      .then((data) => setNeighborhoodData(data))
+                      .catch(() => setNeighborhoodError(true))
+                      .finally(() => setNeighborhoodLoading(false));
+                  }}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  {t("retry")}
+                </button>
               </div>
             </>
           )}

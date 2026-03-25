@@ -108,6 +108,8 @@
     "viewInvestmentProfile": "צפו בפרופיל השקעה, מפת שכונות ונתונים מפורטים",
     "overview": "סקירה כללית",
     "neighborhoodDetail": "פירוט שכונות",
+    "neighborhoodLoadError": "לא ניתן לטעון את נתוני השכונות. זה עלול לקרות בבקשה הראשונה לערים גדולות.",
+    "retry": "נסה שוב",
     "dataPoints": "{count} נקודות נתונים",
     "cityMap": "מפת העיר — נקודות עניין",
     "loadingMapData": "טוען נתוני מפה...",
