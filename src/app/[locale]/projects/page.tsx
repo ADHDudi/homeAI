@@ -1,11 +1,34 @@
-import { fetchAllRecords } from "@/lib/ckan/client";
-import { RESOURCE_IDS } from "@/config/datasets";
+import { getAllCityProfiles, fetchRawData } from "@/lib/data/aggregator";
 import { safeNumber, safeTrim } from "@/lib/data/normalizers";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ProjectsTableClient } from "@/components/projects/ProjectsTableClient";
+import type { CityProfile } from "@/types/city";
 
 export const revalidate = 300;
+
+export interface EnrichedProjectRow {
+  complexName: string;
+  cityName: string;
+  existingUnits: number;
+  additionalUnits: number;
+  inExecution: boolean;
+  status: string;
+  track: string;
+  unitGrowthRatio: number;
+  cityCode: number;
+  district: string;
+  investmentScore: number;
+  population: number;
+  // Additional raw CKAN fields
+  projectNumber: string;
+  planNumber: string;
+  totalPermits: string;
+  proposedUnits: number;
+  authorizationDate: string;
+  validityYear: string;
+  mapLink: string;
+  planLink: string;
+}
 
 export default async function ProjectsPage({
   params,
@@ -16,33 +39,67 @@ export default async function ProjectsPage({
   setRequestLocale(locale);
 
   const t = await getTranslations("projects");
-  const tStats = await getTranslations("stats");
 
-  let renewalProjects: Array<Record<string, unknown>> = [];
   let error: string | null = null;
+  let rows: EnrichedProjectRow[] = [];
 
   try {
-    renewalProjects = await fetchAllRecords(RESOURCE_IDS.urbanRenewal);
+    const [profiles, rawData] = await Promise.all([
+      getAllCityProfiles(),
+      fetchRawData(),
+    ]);
+
+    // Build O(1) lookup by city name
+    const profileMap = new Map<string, CityProfile>();
+    for (const p of profiles) {
+      profileMap.set(p.cityName, p);
+    }
+
+    // Flatten and enrich raw urban renewal records
+    for (const [cityName, records] of rawData.urbanRenewal) {
+      const profile = profileMap.get(cityName);
+      if (!profile) continue; // skip cities without profile (pop < 5,000)
+
+      for (const r of records) {
+        const existing = safeNumber(r["YachadKayam"]);
+        const additional = safeNumber(r["YachadTosafti"]);
+        rows.push({
+          complexName: safeTrim(r["ShemMitcham"]) || safeTrim(r["ProjectName"]) || "",
+          cityName,
+          existingUnits: existing,
+          additionalUnits: additional,
+          inExecution: safeTrim(r["Bebitzua"]) === "כן",
+          status: safeTrim(r["Status"]) || "",
+          track: safeTrim(r["Maslul"]) || "",
+          unitGrowthRatio: existing > 0 ? Math.round((additional / existing) * 10) / 10 : 0,
+          cityCode: profile.cityCode,
+          district: profile.district,
+          investmentScore: profile.investmentScore,
+          population: profile.population,
+          projectNumber: safeTrim(r["MisparMitham"]) || "",
+          planNumber: safeTrim(r["MisparTochnit"]) || "",
+          totalPermits: safeTrim(r["SachHeterim"]) || "",
+          proposedUnits: safeNumber(r["YachadMutza"]),
+          authorizationDate: safeTrim(r["TaarichHachraza"]) || "",
+          validityYear: safeTrim(r["ShnatMatanTokef"]) || "",
+          mapLink: safeTrim(r["KishurLaMapa"]) || "",
+          planLink: safeTrim(r["KishurLatar"]) || "",
+        });
+      }
+    }
+
+    // Default sort by investment score descending
+    rows.sort((a, b) => b.investmentScore - a.investmentScore);
   } catch (e) {
     error = e instanceof Error ? e.message : t("failedToLoad");
   }
 
-  // Group by status
-  const inExecution = renewalProjects.filter(
-    (r) => safeTrim(r["Bebitzua"]) === "כן"
-  );
-  const total = renewalProjects.length;
-  const totalAdditionalUnits = renewalProjects.reduce(
-    (sum, r) => sum + safeNumber(r["YachadTosafti"]),
-    0
-  );
-
   return (
-    <div className="space-y-4 md:space-y-6 lg:space-y-8">
+    <div className="space-y-4 md:space-y-6">
       <div>
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{t("title")}</h1>
         <p className="text-muted-foreground mt-1">
-          {t("subtitle", { count: total })}
+          {t("subtitle", { count: rows.length })}
         </p>
       </div>
 
@@ -51,94 +108,7 @@ export default async function ProjectsPage({
           <p className="font-medium text-destructive">{error}</p>
         </div>
       ) : (
-        <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">{tStats("totalProjects")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold">{total}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">{t("inExecution")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold text-emerald-600">
-                  {inExecution.length}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">{tStats("additionalUnitsLabel")}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-xl md:text-2xl font-bold">
-                  {totalAdditionalUnits.toLocaleString()}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {renewalProjects.slice(0, 30).map((project, i) => {
-              const city = safeTrim(project["Yeshuv"]);
-              const existing = safeNumber(project["YachadKayam"]);
-              const additional = safeNumber(project["YachadTosafti"]);
-              const status = safeTrim(project["Status"]);
-              const track = safeTrim(project["Maslul"]);
-              const isActive = safeTrim(project["Bebitzua"]) === "כן";
-
-              return (
-                <Card key={i} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{city}</CardTitle>
-                      {isActive && (
-                        <Badge variant="default" className="bg-emerald-600">
-                          {t("active")}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("existingUnits")}</span>
-                      <span className="font-medium">{existing.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t("additionalUnits")}</span>
-                      <span className="font-medium text-emerald-600">
-                        +{additional.toLocaleString()}
-                      </span>
-                    </div>
-                    {track && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">{t("track")}</span>
-                        <span className="font-medium">{track}</span>
-                      </div>
-                    )}
-                    {status && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">{t("status")}</span>
-                        <span className="font-medium text-xs">{status}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {renewalProjects.length > 30 && (
-            <p className="text-sm text-muted-foreground text-center">
-              {t("showing", { shown: 30, total: renewalProjects.length })}
-            </p>
-          )}
-        </>
+        <ProjectsTableClient rows={rows} />
       )}
     </div>
   );

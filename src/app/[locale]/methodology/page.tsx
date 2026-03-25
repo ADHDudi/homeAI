@@ -2,16 +2,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
 const DATA_SOURCE_KEYS = [
-  { key: "dsUrbanRenewal", records: "752" },
-  { key: "dsConstructionSites", records: "10,440" },
-  { key: "dsHousingInventory", records: "1,112" },
-  { key: "dsMechir", records: "2,352" },
-  { key: "dsPopulation", records: "1,284" },
-  { key: "dsBankBranches", records: "1,396" },
-  { key: "dsGreenBuildings", records: "7,269" },
-  { key: "dsBusStops", records: "33,927" },
-  { key: "dsContaminated", records: "491" },
-  { key: "dsMunicipalFinances", records: "~5,000" },
+  { key: "dsUrbanRenewal", records: "752", icon: "🔄" },
+  { key: "dsConstructionSites", records: "10,440", icon: "🏗️" },
+  { key: "dsHousingInventory", records: "1,112", icon: "📋" },
+  { key: "dsMechir", records: "2,352", icon: "🏠" },
+  { key: "dsPopulation", records: "1,284", icon: "👥" },
+  { key: "dsBankBranches", records: "1,396", icon: "🏦" },
+  { key: "dsGreenBuildings", records: "7,269", icon: "🌿" },
+  { key: "dsBusStops", records: "33,927", icon: "🚌" },
+  { key: "dsContaminated", records: "491", icon: "⚠️" },
+  { key: "dsMunicipalFinances", records: "~5,000", icon: "💰" },
 ] as const;
 
 export default async function MethodologyPage({
@@ -163,7 +163,10 @@ export default async function MethodologyPage({
           <div className="space-y-2">
             {DATA_SOURCE_KEYS.map((ds) => (
               <div key={ds.key} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1.5 border-b last:border-0 gap-1">
-                <span className="font-medium">{t(ds.key)}</span>
+                <span className="font-medium">
+                  <span className="inline-block w-6 text-center me-1">{ds.icon}</span>
+                  {t(ds.key)}
+                </span>
                 <span className="text-muted-foreground">{t("records", { count: ds.records })}</span>
               </div>
             ))}
