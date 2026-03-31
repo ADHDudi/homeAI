@@ -2,6 +2,7 @@
 
 ## 🔴 High Priority
 - [ ] #011 · [SEC] Tighten CSP headers — middleware.ts uses unsafe-eval and unsafe-inline in script-src, defeating XSS protection; replace with nonce-based CSP
+- [ ] #016 · Fix ActionStatus undefined throws — `data.ActionStatus !== 0` is true when field is absent, causing every valid Dira response to throw; fix with `(data.ActionStatus ?? 0) !== 0`
 
 ## 🟡 Medium Priority
 - [ ] #003 · Fix aggregator stale cache TTL reset — stale disk-cache fallback uses Date.now() instead of preserving original timestamp, prevents API retry during outages
@@ -10,6 +11,8 @@
 - [ ] #006 · Seed disk cache on deploy — mechir page takes 16s on cold start because Dira API paginate all 2433 projects; a seeding script at deploy time would fix this
 - [ ] #012 · [SEC] Validate disk cache on read — aggregator, dira, arcgis, and geocode caches parse JSON with no schema check; poisoned cache file could inject bad data; add Zod validation
 - [ ] #013 · [SEC] Distribute rate limiter across instances — in-memory Map in middleware.ts resets per instance; in multi-instance deployments attackers can bypass the 60 req/min limit; migrate to Redis or Upstash
+- [ ] #017 · Fix ProjectItems pushed before ActionStatus guard — on pages >1 error-envelope items append to allProjects before the throw evicts them; move push below the ActionStatus check
+- [ ] #018 · Guard NumOfRecords NaN in Dira pagination — missing or non-numeric NumOfRecords sets total to NaN; NaN < NaN is false so loop exits after page 1 silently; add Number.isFinite() guard
 
 ## 🟢 Low Priority / Ideas
 - [ ] #007 · Mobile nav 6-tab overflow — nav was designed for 5 tabs; "Mechir LaMishtaken" label may truncate on 320px screens
@@ -18,6 +21,7 @@
 - [ ] #010 · City page Mechir integration — show relevant upcoming lottery projects on the city detail page
 - [ ] #014 · [SEC] Whitelist CKAN filter fields — filters object is JSON-stringified and forwarded to CKAN API without field-name allowlist; tighten Zod schema to reject unexpected keys
 - [ ] #015 · Prune extraneous npm packages — several @emnapi/* packages listed as extraneous in npm ls; run npm prune to reduce attack surface
+- [ ] #019 · Replace timeoutId definite-assignment assertion — all three clients use `let timeoutId!` which hides undefined if fetch throws before Promise constructor runs; use `| undefined` type and guard clearTimeout call
 
 ## ✅ Done
 - [x] #000 · Add Mechir LaMishtaken tab — full lottery tab with Dira API + ArcGIS data sources, caching, filters, charts, and detail panels
