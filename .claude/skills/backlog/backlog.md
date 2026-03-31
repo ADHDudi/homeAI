@@ -1,8 +1,6 @@
 # HomeAI Project Backlog
 
 ## 🔴 High Priority
-- [ ] #011 · [SEC] Tighten CSP headers — middleware.ts uses unsafe-eval and unsafe-inline in script-src, defeating XSS protection; replace with nonce-based CSP
-- [ ] #016 · Fix ActionStatus undefined throws — `data.ActionStatus !== 0` is true when field is absent, causing every valid Dira response to throw; fix with `(data.ActionStatus ?? 0) !== 0`
 
 ## 🟡 Medium Priority
 - [ ] #003 · Fix aggregator stale cache TTL reset — stale disk-cache fallback uses Date.now() instead of preserving original timestamp, prevents API retry during outages
@@ -27,3 +25,5 @@
 - [x] #000 · Add Mechir LaMishtaken tab — full lottery tab with Dira API + ArcGIS data sources, caching, filters, charts, and detail panels
 - [x] #001 · Fix timer leak in CKAN client — clearTimeout added after Promise.race in success and error paths; applied to Dira and ArcGIS clients too
 - [x] #002 · Fix Dira pagination silent failure — ActionStatus checked, throws on error envelope; NumOfRecords: 0 on page 1 breaks with warning
+- [x] #011 · [SEC] Tighten CSP headers — replaced unsafe-eval + unsafe-inline in script-src with per-request nonce + strict-dynamic; Next.js reads nonce from CSP response header
+- [x] #016 · Fix ActionStatus undefined throws — changed !== 0 to (?? 0) !== 0 so missing field is treated as success, not an error

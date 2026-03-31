@@ -92,8 +92,9 @@ export async function fetchAllDiraProjects(): Promise<DiraProject[]> {
     const param = `?firstApplicantIdentityNumber=&secondApplicantIdentityNumber=&ProjectStatus=1&Entitlement=1&PageNumber=${page}&PageSize=${PAGE_SIZE}&IsInit=${page === 1 ? "true" : "false"}&`;
     const data = await diraRequest("Projects", param);
 
-    // ActionStatus !== 0 means the API returned an error envelope
-    if (data.ActionStatus !== 0) {
+    // ActionStatus !== 0 means the API returned an error envelope.
+    // Use ?? 0 so that a missing field is treated as success (not an error).
+    if ((data.ActionStatus ?? 0) !== 0) {
       const msg = data.Messages?.join(", ") || `ActionStatus ${data.ActionStatus}`;
       throw new Error(`[dira] API error on page ${page}: ${msg}`);
     }

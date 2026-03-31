@@ -50,27 +50,43 @@ function checkRate(ip: string): { ok: boolean; remaining: number } {
 // ---------------------------------------------------------------------------
 // Security headers
 // ---------------------------------------------------------------------------
-const SECURITY_HEADERS: Record<string, string> = {
+
+// Static headers — Content-Security-Policy is applied per-request (nonce-based)
+const STATIC_SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-  "Content-Security-Policy": [
+};
+
+/**
+ * Builds a nonce-based CSP for the current request.
+ * - Removes unsafe-eval and unsafe-inline from script-src.
+ * - 'strict-dynamic' lets nonce-trusted scripts load further scripts,
+ *   enabling Next.js dynamic imports / code-splitting without unsafe-eval.
+ * - style-src keeps 'unsafe-inline' because Next.js and Tailwind inject
+ *   critical CSS as inline <style> tags that cannot carry a nonce.
+ * - Next.js reads the nonce from the 'script-src nonce-...' in the CSP
+ *   response header and injects it into its own bootstrap <script> tags.
+ */
+function buildCsp(nonce: string): string {
+  return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.tile.openstreetmap.org",
     "connect-src 'self'",
     "font-src 'self'",
     "frame-ancestors 'none'",
-  ].join("; "),
-};
+  ].join("; ");
+}
 
-function applySecurityHeaders(response: NextResponse): void {
-  for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+function applySecurityHeaders(response: NextResponse, nonce: string): void {
+  for (const [header, value] of Object.entries(STATIC_SECURITY_HEADERS)) {
     response.headers.set(header, value);
   }
+  response.headers.set("Content-Security-Policy", buildCsp(nonce));
 }
 
 // ---------------------------------------------------------------------------
@@ -79,10 +95,13 @@ function applySecurityHeaders(response: NextResponse): void {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Generate a fresh nonce per request for the Content-Security-Policy
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+
   // API routes: rate limiting + security headers only (no i18n)
   if (pathname.startsWith("/api/")) {
     const response = NextResponse.next();
-    applySecurityHeaders(response);
+    applySecurityHeaders(response, nonce);
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -100,7 +119,8 @@ export function middleware(request: NextRequest) {
           status: 429,
           headers: {
             "Retry-After": "60",
-            ...Object.fromEntries(Object.entries(SECURITY_HEADERS)),
+            ...Object.fromEntries(Object.entries(STATIC_SECURITY_HEADERS)),
+            "Content-Security-Policy": buildCsp(nonce),
           },
         }
       );
@@ -111,7 +131,7 @@ export function middleware(request: NextRequest) {
 
   // All other routes: i18n routing + security headers
   const response = intlMiddleware(request);
-  applySecurityHeaders(response);
+  applySecurityHeaders(response, nonce);
   return response;
 }
 
