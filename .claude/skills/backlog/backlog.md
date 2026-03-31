@@ -1,18 +1,23 @@
 # HomeAI Project Backlog
 
 ## 🔴 High Priority
+- [ ] #011 · [SEC] Tighten CSP headers — middleware.ts uses unsafe-eval and unsafe-inline in script-src, defeating XSS protection; replace with nonce-based CSP
 
 ## 🟡 Medium Priority
 - [ ] #003 · Fix aggregator stale cache TTL reset — stale disk-cache fallback uses Date.now() instead of preserving original timestamp, prevents API retry during outages
 - [ ] #004 · Add CKAN fetch AbortController — Promise.race timeout doesn't cancel underlying HTTP request, abandoned fetches consume sockets until server closes connection
 - [ ] #005 · Remove conflicting revalidate export — mechir/page.tsx has both force-dynamic and revalidate=300, the latter is silently ignored by Next.js
 - [ ] #006 · Seed disk cache on deploy — mechir page takes 16s on cold start because Dira API paginate all 2433 projects; a seeding script at deploy time would fix this
+- [ ] #012 · [SEC] Validate disk cache on read — aggregator, dira, arcgis, and geocode caches parse JSON with no schema check; poisoned cache file could inject bad data; add Zod validation
+- [ ] #013 · [SEC] Distribute rate limiter across instances — in-memory Map in middleware.ts resets per instance; in multi-instance deployments attackers can bypass the 60 req/min limit; migrate to Redis or Upstash
 
 ## 🟢 Low Priority / Ideas
 - [ ] #007 · Mobile nav 6-tab overflow — nav was designed for 5 tabs; "Mechir LaMishtaken" label may truncate on 320px screens
 - [ ] #008 · ArcGIS dedup collision risk — ActiveProjectId ?? OBJECTID fallback could collide with Dira ProjectNumber causing wrong suppression of upcoming projects
 - [ ] #009 · Add open lottery push notification — schedule a periodic check for new open lotteries and surface a banner when status changes
 - [ ] #010 · City page Mechir integration — show relevant upcoming lottery projects on the city detail page
+- [ ] #014 · [SEC] Whitelist CKAN filter fields — filters object is JSON-stringified and forwarded to CKAN API without field-name allowlist; tighten Zod schema to reject unexpected keys
+- [ ] #015 · Prune extraneous npm packages — several @emnapi/* packages listed as extraneous in npm ls; run npm prune to reduce attack surface
 
 ## ✅ Done
 - [x] #000 · Add Mechir LaMishtaken tab — full lottery tab with Dira API + ArcGIS data sources, caching, filters, charts, and detail panels
