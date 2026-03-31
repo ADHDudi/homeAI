@@ -8,7 +8,6 @@ import { getArcGISUpcomingSafe } from "@/lib/arcgis/cache";
 import { mapArcGISToMechirRows } from "@/lib/arcgis/mapper";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 300;
 
 export type CompetitionLevel = "low" | "medium" | "high" | "veryHigh" | "na";
 

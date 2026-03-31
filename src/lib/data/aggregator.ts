@@ -247,8 +247,10 @@ async function fetchRawDataInternal(): Promise<RawCityData> {
       d.mechir, d.banks, d.busStops, d.greenBuildings, d.contaminated,
       d.municipalFinances || []
     );
-    // Use disk-cache timestamp so it refreshes when TTL expires
-    cachedData = { data, timestamp: Date.now() };
+    // Preserve original disk-cache timestamp so the in-memory TTL reflects
+    // the true data age. Using Date.now() here would reset the clock and
+    // prevent API retries for a full 30 min even after the outage clears.
+    cachedData = { data, timestamp: staleDiskCache.ts };
     return data;
   }
 

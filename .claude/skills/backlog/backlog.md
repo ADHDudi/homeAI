@@ -3,9 +3,7 @@
 ## 🔴 High Priority
 
 ## 🟡 Medium Priority
-- [ ] #003 · Fix aggregator stale cache TTL reset — stale disk-cache fallback uses Date.now() instead of preserving original timestamp, prevents API retry during outages
 - [ ] #004 · Add CKAN fetch AbortController — Promise.race timeout doesn't cancel underlying HTTP request, abandoned fetches consume sockets until server closes connection
-- [ ] #005 · Remove conflicting revalidate export — mechir/page.tsx has both force-dynamic and revalidate=300, the latter is silently ignored by Next.js
 - [ ] #006 · Seed disk cache on deploy — mechir page takes 16s on cold start because Dira API paginate all 2433 projects; a seeding script at deploy time would fix this
 - [ ] #012 · [SEC] Validate disk cache on read — aggregator, dira, arcgis, and geocode caches parse JSON with no schema check; poisoned cache file could inject bad data; add Zod validation
 - [ ] #013 · [SEC] Distribute rate limiter across instances — in-memory Map in middleware.ts resets per instance; in multi-instance deployments attackers can bypass the 60 req/min limit; migrate to Redis or Upstash
@@ -27,3 +25,5 @@
 - [x] #002 · Fix Dira pagination silent failure — ActionStatus checked, throws on error envelope; NumOfRecords: 0 on page 1 breaks with warning
 - [x] #011 · [SEC] Tighten CSP headers — replaced unsafe-eval + unsafe-inline in script-src with per-request nonce + strict-dynamic; Next.js reads nonce from CSP response header
 - [x] #016 · Fix ActionStatus undefined throws — changed !== 0 to (?? 0) !== 0 so missing field is treated as success, not an error
+- [x] #003 · Fix aggregator stale cache TTL reset — stale fallback now uses staleDiskCache.ts instead of Date.now(), preserving true data age for correct API retry timing
+- [x] #005 · Remove conflicting revalidate export — removed revalidate=300 from mechir/page.tsx; force-dynamic already prevents ISR caching
