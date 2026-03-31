@@ -18,6 +18,7 @@
 - [ ] #014 · [SEC] Whitelist CKAN filter fields — filters object is JSON-stringified and forwarded to CKAN API without field-name allowlist; tighten Zod schema to reject unexpected keys
 - [ ] #015 · Prune extraneous npm packages — several @emnapi/* packages listed as extraneous in npm ls; run npm prune to reduce attack surface
 - [ ] #019 · Replace timeoutId definite-assignment assertion — all three clients use `let timeoutId!` which hides undefined if fetch throws before Promise constructor runs; use `| undefined` type and guard clearTimeout call
+- [ ] #020 · Fix 4xx over-retry in Dira client — catch block checks message.includes("Dira API error") which matches all HTTP errors; 404/400 are retried once unnecessarily; restrict to 5xx only
 
 ## ✅ Done
 - [x] #000 · Add Mechir LaMishtaken tab — full lottery tab with Dira API + ArcGIS data sources, caching, filters, charts, and detail panels
@@ -26,4 +27,5 @@
 - [x] #011 · [SEC] Tighten CSP headers — replaced unsafe-eval + unsafe-inline in script-src with per-request nonce + strict-dynamic; Next.js reads nonce from CSP response header
 - [x] #016 · Fix ActionStatus undefined throws — changed !== 0 to (?? 0) !== 0 so missing field is treated as success, not an error
 - [x] #003 · Fix aggregator stale cache TTL reset — stale fallback now uses staleDiskCache.ts instead of Date.now(), preserving true data age for correct API retry timing
+- [x] testing · Bootstrap Vitest + 18 unit tests for fetchAllDiraProjects — covers pagination, ActionStatus guard (#016), NumOfRecords edge cases (#018), HTTP retry, request shape
 - [x] #005 · Remove conflicting revalidate export — removed revalidate=300 from mechir/page.tsx; force-dynamic already prevents ISR caching
