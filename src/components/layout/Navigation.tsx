@@ -12,6 +12,7 @@ const NAV_KEYS = [
   { href: "/explore", key: "map" },
   { href: "/city-view", key: "city" },
   { href: "/projects", key: "projects" },
+  { href: "/mechir", key: "lottery" },
   { href: "/compare", key: "compare" },
   { href: "/methodology", key: "method" },
 ] as const;

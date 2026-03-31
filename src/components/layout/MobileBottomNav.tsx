@@ -7,6 +7,7 @@ import {
   Map,
   Building2,
   Hammer,
+  Ticket,
   Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ const TABS = [
   { href: "/explore", key: "map", icon: Map },
   { href: "/city-view", key: "city", icon: Building2 },
   { href: "/projects", key: "projects", icon: Hammer },
+  { href: "/mechir", key: "lottery", icon: Ticket },
   { href: "/compare", key: "compare", icon: Scale },
 ] as const;
 

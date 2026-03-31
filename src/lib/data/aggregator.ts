@@ -146,6 +146,23 @@ export async function fetchRawData(): Promise<RawCityData> {
 }
 
 async function fetchRawDataInternal(): Promise<RawCityData> {
+  // Disk-first: if disk cache is fresh enough, load it immediately without
+  // hitting the API. The API (especially bus stops, 33k+ records) can take
+  // 1–2 minutes to paginate sequentially — far too slow for SSR.
+  const diskCache = readDiskCache();
+  if (diskCache && Date.now() - diskCache.ts < CACHE_TTL) {
+    const d = diskCache.datasets;
+    const data = buildRawFromArrays(
+      d.population, d.urbanRenewal, d.construction, d.housing,
+      d.mechir, d.banks, d.busStops, d.greenBuildings, d.contaminated,
+      d.municipalFinances || []
+    );
+    // Preserve original timestamp so cache expires at the right time
+    cachedData = { data, timestamp: diskCache.ts };
+    console.log("[cache] Loaded fresh disk cache into memory (skipped API)");
+    return data;
+  }
+
   // Fetch all datasets in parallel - gracefully handle individual failures
   const safeFetch = async (
     ...args: Parameters<typeof fetchAllRecords>
@@ -222,9 +239,9 @@ async function fetchRawDataInternal(): Promise<RawCityData> {
 
   // API is down – fall back to disk cache
   console.warn("[cache] API returned no population data – falling back to disk cache");
-  const diskCache = readDiskCache();
-  if (diskCache) {
-    const d = diskCache.datasets;
+  const staleDiskCache = readDiskCache();
+  if (staleDiskCache) {
+    const d = staleDiskCache.datasets;
     const data = buildRawFromArrays(
       d.population, d.urbanRenewal, d.construction, d.housing,
       d.mechir, d.banks, d.busStops, d.greenBuildings, d.contaminated,
