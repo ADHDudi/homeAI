@@ -24,13 +24,14 @@ export async function fetchUpcomingProjects(): Promise<ArcGISCompound[]> {
       await sleep(RETRY_DELAY_MS * attempt);
     }
 
+    let timeoutId!: ReturnType<typeof setTimeout>;
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
           () => reject(new Error(`ArcGIS timeout after ${TIMEOUT}ms`)),
           TIMEOUT
-        )
-      );
+        );
+      });
 
       const response = await Promise.race([
         fetch(url, {
@@ -39,6 +40,7 @@ export async function fetchUpcomingProjects(): Promise<ArcGISCompound[]> {
         }),
         timeoutPromise,
       ]);
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         lastError = new Error(
@@ -60,6 +62,7 @@ export async function fetchUpcomingProjects(): Promise<ArcGISCompound[]> {
       console.log(`[arcgis] Fetched ${compounds.length} upcoming projects`);
       return compounds;
     } catch (err) {
+      clearTimeout(timeoutId);
       lastError = err instanceof Error ? err : new Error(String(err));
       const isRetryable =
         lastError.message.includes("timeout") ||

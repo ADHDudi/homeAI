@@ -1,8 +1,6 @@
 # HomeAI Project Backlog
 
 ## 🔴 High Priority
-- [ ] #001 · Fix timer leak in CKAN client — setTimeout in Promise.race is never cleared after successful fetch, accumulating timers during paginated requests
-- [ ] #002 · Fix Dira pagination silent failure — NumOfRecords: 0 from error response causes while loop to exit immediately, silently returning empty data
 
 ## 🟡 Medium Priority
 - [ ] #003 · Fix aggregator stale cache TTL reset — stale disk-cache fallback uses Date.now() instead of preserving original timestamp, prevents API retry during outages
@@ -18,3 +16,5 @@
 
 ## ✅ Done
 - [x] #000 · Add Mechir LaMishtaken tab — full lottery tab with Dira API + ArcGIS data sources, caching, filters, charts, and detail panels
+- [x] #001 · Fix timer leak in CKAN client — clearTimeout added after Promise.race in success and error paths; applied to Dira and ArcGIS clients too
+- [x] #002 · Fix Dira pagination silent failure — ActionStatus checked, throws on error envelope; NumOfRecords: 0 on page 1 breaks with warning

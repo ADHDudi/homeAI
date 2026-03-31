@@ -44,13 +44,14 @@ export async function ckanRequest<T>(
       await sleep(RETRY_DELAY_MS * attempt);
     }
 
+    let timeoutId!: ReturnType<typeof setTimeout>;
     try {
       // Use Promise.race for timeout — AbortController.abort() throws an internal
       // Node.js error (controller[kState].transformAlgorithm) in some versions,
       // which silently swallows the abort and lets fetches hang indefinitely.
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout)
-      );
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout);
+      });
 
       const response = await Promise.race([
         fetch(url.toString(), {
@@ -59,6 +60,7 @@ export async function ckanRequest<T>(
         }),
         timeoutPromise,
       ]);
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const isRetryable = response.status === 409 || response.status === 503 || response.status >= 500;
@@ -76,6 +78,7 @@ export async function ckanRequest<T>(
 
       return data as CkanResponse<T>;
     } catch (err) {
+      clearTimeout(timeoutId);
       lastError = err instanceof Error ? err : new Error(String(err));
       const isTimeout = lastError.message.startsWith("Request timeout");
       if ((isTimeout || lastError.message.includes("CKAN API error")) && attempt < MAX_RETRIES - 1) {

@@ -34,13 +34,14 @@ async function diraRequest(
       await sleep(RETRY_DELAY_MS * attempt);
     }
 
+    let timeoutId!: ReturnType<typeof setTimeout>;
     try {
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(
           () => reject(new Error(`Dira API timeout after ${TIMEOUT}ms`)),
           TIMEOUT
-        )
-      );
+        );
+      });
 
       const response = await Promise.race([
         fetch(url, {
@@ -52,6 +53,7 @@ async function diraRequest(
         }),
         timeoutPromise,
       ]);
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         lastError = new Error(
@@ -64,6 +66,7 @@ async function diraRequest(
       const data = (await response.json()) as DiraApiResponse;
       return data;
     } catch (err) {
+      clearTimeout(timeoutId);
       lastError = err instanceof Error ? err : new Error(String(err));
       const isRetryable =
         lastError.message.includes("timeout") ||
@@ -89,13 +92,23 @@ export async function fetchAllDiraProjects(): Promise<DiraProject[]> {
     const param = `?firstApplicantIdentityNumber=&secondApplicantIdentityNumber=&ProjectStatus=1&Entitlement=1&PageNumber=${page}&PageSize=${PAGE_SIZE}&IsInit=${page === 1 ? "true" : "false"}&`;
     const data = await diraRequest("Projects", param);
 
+    // ActionStatus !== 0 means the API returned an error envelope
+    if (data.ActionStatus !== 0) {
+      const msg = data.Messages?.join(", ") || `ActionStatus ${data.ActionStatus}`;
+      throw new Error(`[dira] API error on page ${page}: ${msg}`);
+    }
+
     if (data.ProjectItems) {
       allProjects.push(...data.ProjectItems);
     }
 
-    // First page tells us the total
+    // First page tells us the total; treat 0 as a signal that something is wrong
     if (page === 1) {
-      total = data.NumOfRecords || 0;
+      total = data.NumOfRecords;
+      if (total === 0) {
+        console.warn("[dira] NumOfRecords=0 on page 1 — API may have returned empty data");
+        break;
+      }
     }
 
     // If API returned all at once (IsAll=true) or no more items, stop
