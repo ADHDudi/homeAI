@@ -1,0 +1,350 @@
+================================================================================
+                        HomeAI - Israel Investment Finder
+                              START HERE GUIDE
+================================================================================
+
+1. THE PROBLEM
+================================================================================
+
+Investing in Israeli real estate — especially in cities undergoing urban renewal
+(Pinui-Binui / TAMA 38) — requires cross-referencing dozens of fragmented
+government data sources: population statistics, housing construction pipelines,
+municipal budgets, transport accessibility, environmental data, and more.
+
+This information is scattered across multiple ministries on data.gov.il, each
+with different field names (mostly in Hebrew), inconsistent city identifiers, and
+no unified view. A prospective investor or researcher must manually download
+CSV files, normalize city names, and build their own comparison framework.
+
+HomeAI solves this by:
+  - Fetching 10 government datasets automatically via the CKAN API
+  - Normalizing Hebrew field names and city identifiers
+  - Joining all data into a unified CityProfile for every city (pop > 5,000)
+  - Computing a transparent, weighted Investment Score (0-100) for each city
+  - Presenting everything in an interactive, bilingual (English + Hebrew RTL)
+    web application with maps, charts, tables, and comparison tools
+
+
+2. THE DATA
+================================================================================
+
+All data comes from Israel's open government data portal (data.gov.il) via the
+CKAN API. The app fetches ~100,000+ records across these 10 datasets:
+
+  Dataset                    Source Ministry                  ~Records
+  -------------------------  -------------------------------- --------
+  Urban Renewal Projects     Ministry of Housing                  752
+  Construction Sites         Ministry of Housing               10,440
+  Housing Inventory          Ministry of Housing                1,112
+  Mechir LaMishtaken         Ministry of Housing                2,352
+  Population (by age group)  Central Bureau of Statistics        1,284
+  Bank Branches              Bank of Israel                     1,396
+  Green Buildings            Min. of Environmental Protection    7,269
+  Bus Stops                  Ministry of Transport              33,927
+  Contaminated Sites         Min. of Environmental Protection      491
+  Municipal Finances         Ministry of Interior               ~5,000
+
+Data is cached in memory (30-min TTL) and on disk for resilience when the
+government API is unavailable.
+
+
+3. THE INVESTMENT SCORE
+================================================================================
+
+Each city receives a composite score from 0 to 100, built from 6 weighted
+sub-scores. Most metrics are normalized per-capita (per 1,000 residents) and
+then percentile-ranked against all other cities.
+
+  Sub-Score               Weight   What It Measures
+  ----------------------  ------   ----------------------------------------
+  Development Momentum     25%     Urban renewal projects, additional housing
+                                   units, construction sites, housing pipeline
+                                   (all per capita)
+
+  Demand Signal            20%     Subscriber-to-winner ratio in housing
+                                   lotteries (demand proxy), young adult
+                                   population share (19-45), age growth ratio
+
+  Price Attractiveness     20%     Average price per square meter (inverted:
+                                   lower price = higher score)
+
+  Infrastructure Quality   15%     Bus stop density, bank branch density,
+                                   green building count (all per capita)
+
+  Municipal Health         10%     Budget surplus ratio, loan burden (inverted),
+                                   income per capita
+
+  Environment              10%     Contaminated sites per capita (inverted:
+                                   fewer = better)
+
+Score categories:
+  - 70-100  Excellent (green)
+  - 55-69   Good (blue)
+  - 40-54   Fair (amber)
+  - 0-39    Low (red)
+
+If a city has fewer than 3 available sub-scores, a confidence penalty is
+applied to prevent inflated scores from sparse data.
+
+
+4. APP SCREENS — DETAILED BREAKDOWN
+================================================================================
+
+
+4.1  DASHBOARD (Home Page)
+--------------------------
+The landing page provides a national overview of the Israeli housing market.
+
+Summary Cards (top row):
+  - Total cities analyzed (count)
+  - Average investment score across all cities
+  - Cities with active urban renewal projects
+  - Cities with price data available
+
+Charts:
+  - Two dynamically-loaded market summary charts
+
+Top Cities Table:
+  - Ranked list of top 50 cities by investment score
+  - Columns: Rank, City (clickable link to City View), District, Investment
+    Score (color-coded badge), Population, Avg Price (per sqm in shekels),
+    Urban Renewal Projects (mini bar chart), Construction Sites (mini bar)
+  - Interactive: sortable columns (click headers), search by city name,
+    filter by district
+  - Mini bar charts show relative scale against the maximum value
+
+
+4.2  MAP / EXPLORE
+------------------
+An interactive map of Israel with color-coded city markers.
+
+Map Layers (switchable):
+  - "Score"        — color intensity by investment score
+  - "Renewal"      — marker size by number of urban renewal projects
+  - "Construction" — marker size by construction site count
+  - "Price"        — color by average price per square meter
+
+Filter Controls:
+  - Search by city name
+  - District dropdown
+  - Minimum score threshold: 0, 45, 60, or 75
+
+Quick Stats (4 cards, update with filters):
+  - Cities shown on map
+  - Average score of visible cities
+  - Total renewal projects in view
+  - Total construction sites in view
+
+Top Opportunities:
+  - 3x3 grid of the top 9 cities matching current filters
+  - Each card shows city name, district, and score badge
+  - Clickable — navigates to City View
+
+
+4.3  CITY VIEW
+--------------
+The deepest view — a full profile for a single city. Accessed by clicking a
+city name anywhere in the app, or by selecting from the search list.
+
+City Selector:
+  - Collapsible search panel with all cities listed
+  - Shows rank, name, district, and score badge
+  - Quick-pick buttons for the top 5 cities when nothing is selected
+
+City Header:
+  - City name (large), district, population, investment score (large badge)
+  - Sticky navigation tabs: "Overview" and "Neighborhood Detail"
+
+OVERVIEW TAB:
+
+  City Map Card:
+    - Leaflet map centered on the city
+    - Geo-located markers for: green buildings, bus stops, bank branches,
+      construction sites, urban renewal projects
+    - Each data type has its own icon and color
+    - Shows total geo-located data point count
+
+  Score Breakdown:
+    - Radar/spider chart of all 6 sub-scores
+    - Detailed list: each sub-score with its weight, progress bar, and value
+    - Tooltips explain what each dimension measures
+
+  Urban Development Cards (4):
+    - Urban Renewal Projects (total + in-execution count)
+    - Additional Housing Units (total + ratio to existing units)
+    - Construction Sites (total + active cranes count)
+    - Housing Pipeline (potential units from inventory)
+
+  Pricing & Demand Cards (4):
+    - Average Price Per Meter (in shekels, or N/A)
+    - Subscriber-to-Winner Ratio (demand proxy, or N/A)
+    - Bus Stops (transit accessibility count)
+    - Bank Branches (financial infrastructure count)
+
+  Green & Demographics Cards (4):
+    - Green Buildings (count + average green score)
+    - Contaminated Sites (count + remediated count if any)
+    - Young Adult Ratio (19-45 age group as percentage)
+    - Population (total with district label)
+
+  Municipal Finances Cards (4):
+    - Budget Balance (surplus in thousands of shekels)
+    - Annual Income (regular budget, in thousands)
+    - Annual Expenses (regular budget, in thousands)
+    - Loan Burden (outstanding loans, in thousands)
+
+  Age Distribution Chart:
+    - 6 bars for age groups: 0-5, 6-18, 19-45, 46-55, 56-64, 65+
+    - Each bar shows its percentage of total population
+
+NEIGHBORHOOD DETAIL TAB:
+
+  Neighborhood Pricing:
+    - Pricing breakdown by neighborhood/area within the city
+
+  City Projects List:
+    - Urban renewal projects (individual project details)
+    - Construction sites (addresses, types, cranes)
+    - Housing plans (plan numbers, stages)
+    - Contaminated sites (contamination level, source)
+
+
+4.4  PROJECTS
+-------------
+A comprehensive table of all ~769 individual urban renewal projects across
+Israel, enriched with investment signals from their parent city.
+
+Filter Controls:
+  - Search by city name or project/complex name (Hebrew-aware)
+  - District dropdown filter
+  - Status filter: All / In Execution / Planned Only
+
+Mini Charts (4 cards, update with filters):
+  - Status Distribution — pie chart (in execution vs planned)
+  - District Distribution — bar chart (projects per district, color-coded
+    by average score)
+  - Total Additional Units — aggregate sum
+  - Average Investment Score — across filtered projects
+
+Projects Table:
+  - Columns: Project/Complex Name, City (linked to City View), Score (badge),
+    Existing Units, Additional Units (+X format), Growth Ratio (color-coded:
+    green >2x, amber 1-2x, red <1x), Track, Status (badge)
+  - All columns are sortable (click headers, toggle asc/desc)
+  - Some columns hidden on mobile for readability
+
+Expandable Detail Panel (click any row):
+  When a row is clicked, a full detail panel expands below it showing:
+  - Project name, city, and district
+  - Investment score, execution status, regulatory track
+  - Detailed status text
+  - Existing, additional, and proposed unit counts
+  - Unit growth ratio
+  - Total permits issued
+  - Project number and plan number
+  - Authorization date and validity year
+  - City population
+  - Clickable external links:
+    * "View on Map" — opens the project location on a government map
+    * "View Plan Documents" — opens official planning documents
+  Both links open in a new browser tab.
+
+
+4.5  COMPARE
+------------
+Side-by-side comparison of any two cities across 30+ metrics.
+
+City Selection:
+  - Two searchable city picker panels (City A and City B)
+  - Quick-pick buttons suggest interesting comparison pairs
+
+Comparison Sections (once both cities selected):
+
+  Header: Both city names, districts, and large score badges
+
+  Score Breakdown:
+    - Overall score comparison
+    - All 6 sub-scores with weights
+    - Winning value highlighted in green
+    - Desktop: 3-column layout (City A | Metric | City B)
+    - Mobile: stacked layout
+
+  Development:
+    - Urban renewal projects, in-execution count
+    - Additional housing units
+    - Construction sites, active cranes
+    - Housing pipeline units
+
+  Pricing & Demand:
+    - Average price per meter (lower highlighted as better)
+    - Subscriber-to-winner ratio
+    - Mechir LaMishtaken project count
+
+  Infrastructure & Demographics:
+    - Population
+    - Young adult percentage (19-45)
+    - Bus stops, bank branches
+    - Green buildings
+    - Contaminated sites (lower highlighted as better)
+
+  Municipal Finances:
+    - Budget balance, annual income, annual expenses
+    - Loan burden (lower highlighted as better)
+
+
+4.6  METHODOLOGY
+----------------
+Transparent documentation of how the investment score is calculated.
+
+  Investment Score Explanation:
+    - Description of the overall scoring approach
+    - Color-coded category badges (Excellent / Good / Fair / Low)
+
+  Sub-Score Cards (6 cards):
+    - Each card shows the dimension name, weight, description, and the
+      specific metrics used in its calculation
+
+  Data Sources:
+    - All 10 government datasets listed with:
+      * Emoji icon matching the map layer icons
+      * Dataset name
+      * Record count
+    - Icons: Urban Renewal, Construction, Housing, Mechir, Population,
+      Bank Branches, Green Buildings, Bus Stops, Contaminated, Municipal
+
+  Limitations:
+    - Disclaimers about data availability, update frequency, and price
+      data coverage
+
+
+5. TECHNICAL STACK
+================================================================================
+
+  - Next.js 16 (App Router) with Turbopack
+  - TypeScript
+  - Tailwind CSS + shadcn/ui components
+  - next-intl for bilingual support (English + Hebrew RTL)
+  - Recharts for charts (lazy-loaded, ~200KB bundle)
+  - Leaflet for maps (SSR-disabled)
+  - Firebase App Hosting for deployment
+  - ISR (Incremental Static Regeneration) with 5-minute revalidation
+  - In-memory + disk cache for government API data (30-min TTL)
+
+
+6. HOW TO RUN LOCALLY
+================================================================================
+
+  cd home-investment-app
+  npm install
+  npm run dev
+
+  Open http://localhost:3000
+
+  No API keys needed — all data comes from the public data.gov.il CKAN API.
+
+
+7. WEB APP URL
+================================================================================
+
+  Local dev:   http://localhost:3000
+  Production:  https://homeai-israel--homeai-israel.europe-west4.hosted.app
