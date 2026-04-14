@@ -20,17 +20,15 @@ const MAX_REQUESTS = 60; // per window
 const hits = new Map<string, { count: number; resetAt: number }>();
 
 // Periodically prune stale entries to prevent unbounded memory growth
-if (typeof globalThis !== "undefined") {
-  const PRUNE_INTERVAL = 300_000; // 5 min
-  const key = "__rateLimitPruner";
-  if (!(globalThis as Record<string, unknown>)[key]) {
-    (globalThis as Record<string, unknown>)[key] = setInterval(() => {
-      const now = Date.now();
-      for (const [ip, entry] of hits) {
-        if (entry.resetAt < now) hits.delete(ip);
-      }
-    }, PRUNE_INTERVAL);
-  }
+const PRUNE_INTERVAL = 300_000; // 5 min
+const key = "__rateLimitPruner";
+if (!(globalThis as Record<string, unknown>)[key]) {
+  (globalThis as Record<string, unknown>)[key] = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of hits) {
+      if (entry.resetAt < now) hits.delete(ip);
+    }
+  }, PRUNE_INTERVAL);
 }
 
 function checkRate(ip: string): { ok: boolean; remaining: number } {
@@ -60,6 +58,8 @@ const STATIC_SECURITY_HEADERS: Record<string, string> = {
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
 };
 
+const isDev = process.env.NODE_ENV === "development";
+
 /**
  * Builds a nonce-based CSP for the current request.
  * - Removes unsafe-eval and unsafe-inline from script-src.
@@ -73,7 +73,9 @@ const STATIC_SECURITY_HEADERS: Record<string, string> = {
 function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // 'unsafe-eval' is required in dev mode because webpack uses eval-source-map.
+    // In production, strict-dynamic is sufficient.
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https://*.tile.openstreetmap.org",
     "connect-src 'self'",
@@ -100,17 +102,12 @@ export function middleware(request: NextRequest) {
 
   // API routes: rate limiting + security headers only (no i18n)
   if (pathname.startsWith("/api/")) {
-    const response = NextResponse.next();
-    applySecurityHeaders(response, nonce);
-
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip") ??
       "unknown";
 
     const { ok, remaining } = checkRate(ip);
-    response.headers.set("X-RateLimit-Limit", String(MAX_REQUESTS));
-    response.headers.set("X-RateLimit-Remaining", String(remaining));
 
     if (!ok) {
       return NextResponse.json(
@@ -119,13 +116,17 @@ export function middleware(request: NextRequest) {
           status: 429,
           headers: {
             "Retry-After": "60",
-            ...Object.fromEntries(Object.entries(STATIC_SECURITY_HEADERS)),
+            ...STATIC_SECURITY_HEADERS,
             "Content-Security-Policy": buildCsp(nonce),
           },
         }
       );
     }
 
+    const response = NextResponse.next();
+    applySecurityHeaders(response, nonce);
+    response.headers.set("X-RateLimit-Limit", String(MAX_REQUESTS));
+    response.headers.set("X-RateLimit-Remaining", String(remaining));
     return response;
   }
 

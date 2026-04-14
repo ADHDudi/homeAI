@@ -126,12 +126,47 @@ export const DISTRICT_CENTERS: Record<string, CityCoord> = {
   "יהודה והשומרון": { lat: 32.00, lng: 35.20 },
 };
 
+// Maps CBS subdistrict names → main district key in DISTRICT_CENTERS
+const SUBDISTRICT_TO_DISTRICT: Record<string, string> = {
+  "ירושלים": "ירושלים",
+  "בית לחם": "יהודה והשומרון",
+  "חברון": "יהודה והשומרון",
+  "ראמאללה": "יהודה והשומרון",
+  "טול כרם": "יהודה והשומרון",
+  "שכם": "יהודה והשומרון",
+  "תל אביב": "תל אביב",
+  "רמת גן": "תל אביב",
+  "פתח תקווה": "מרכז",
+  "רחובות": "מרכז",
+  "רמלה": "מרכז",
+  "השרון": "מרכז",
+  "חיפה": "חיפה",
+  "חדרה": "חיפה",
+  "עכו": "צפון",
+  "נצרת": "צפון",
+  "עפולה": "צפון",
+  "כנרת": "צפון",
+  "צפת": "צפון",
+  "גולן": "צפון",
+  "באר שבע": "דרום",
+  "אשקלון": "דרום",
+};
+
 /**
  * Looks up coordinates for a city by its Hebrew name.
+ * Falls back to the district/subdistrict center if no exact match.
  *
  * @param cityName - Hebrew city name (e.g. "תל אביב-יפו").
+ * @param district - Optional CBS subdistrict name for fallback.
  * @returns Coordinates if found, otherwise `null`.
  */
-export function getCityCoordinates(cityName: string): CityCoord | null {
-  return CITY_COORDINATES[cityName] ?? null;
+export function getCityCoordinates(cityName: string, district?: string): CityCoord | null {
+  if (CITY_COORDINATES[cityName]) return CITY_COORDINATES[cityName];
+  if (district) {
+    const districtKey = DISTRICT_CENTERS[district]
+      ? district
+      : SUBDISTRICT_TO_DISTRICT[district];
+    if (districtKey) return DISTRICT_CENTERS[districtKey];
+  }
+  return null;
 }

@@ -107,6 +107,7 @@ function CitySelector({
               <button
                 key={c.cityCode}
                 onClick={() => handleSelect(String(c.cityCode))}
+                onMouseEnter={() => import("@/components/city/NeighborhoodMap")}
                 className={`w-full flex items-center gap-3 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/50 ${
                   c.cityCode === Number(selectedCode)
                     ? "bg-primary/10 font-medium"
@@ -173,7 +174,7 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
   );
 
   const cityCenter = useMemo(
-    () => (city ? getCityCoordinates(city.cityName) : null),
+    () => (city ? getCityCoordinates(city.cityName, city.district) : null),
     [city]
   );
 
@@ -337,19 +338,16 @@ export function CityViewClient({ cities }: { cities: CityProfile[] }) {
                 </div>
               </CardHeader>
               <CardContent>
-                {neighborhoodLoading ? (
-                  <div className="w-full h-[300px] md:h-[400px] lg:h-[500px] rounded-lg border bg-muted animate-pulse" />
-                ) : neighborhoodData ? (
-                  <NeighborhoodMap
-                    key={selectedCode}
-                    center={cityCenter}
-                    greenBuildings={neighborhoodData.greenBuildings}
-                    busStops={neighborhoodData.busStops}
-                    bankBranches={neighborhoodData.bankBranches}
-                    constructionSites={neighborhoodData.constructionSites}
-                    renewalProjects={neighborhoodData.renewalProjects}
-                  />
-                ) : null}
+                {/* Render map immediately on city select; markers populate when API responds */}
+                <NeighborhoodMap
+                  key={selectedCode}
+                  center={cityCenter}
+                  greenBuildings={neighborhoodData?.greenBuildings ?? []}
+                  busStops={neighborhoodData?.busStops ?? []}
+                  bankBranches={neighborhoodData?.bankBranches ?? []}
+                  constructionSites={neighborhoodData?.constructionSites ?? []}
+                  renewalProjects={neighborhoodData?.renewalProjects ?? []}
+                />
               </CardContent>
             </Card>
           )}

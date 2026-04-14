@@ -32,9 +32,21 @@ export interface RawCityData {
 }
 
 let cachedData: { data: RawCityData; timestamp: number } | null = null;
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes (data fetches are expensive)
 
-// Inflight dedup: coalesce concurrent cache-miss fetches into a single request
+// The dataset from data.gov.il doesn't change daily.
+// We fetch once per server process (on startup) and cache indefinitely.
+// A server restart is the intentional mechanism for refreshing data.
+const CACHE_TTL = Number.POSITIVE_INFINITY;
+
+// If the startup API fetch is still running when an SSR request arrives,
+// wait up to this long before falling back to the stale disk cache.
+// Mobile browsers time out at ~60s; 20s gives enough headroom.
+const FETCH_SSR_TIMEOUT_MS = 20_000;
+
+// How old a disk cache can be before we skip it and go straight to the API.
+const DISK_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// Inflight dedup: coalesce concurrent requests into a single fetch
 let inflightFetch: Promise<RawCityData> | null = null;
 
 // Scored profiles cache: avoid re-running calculateInvestmentScore on same raw data
@@ -128,29 +140,54 @@ function buildRawFromArrays(
  * @returns Grouped raw records keyed by normalized city name.
  */
 export async function fetchRawData(): Promise<RawCityData> {
-  if (cachedData && Date.now() - cachedData.timestamp < CACHE_TTL) {
-    return cachedData.data;
+  // With CACHE_TTL = Infinity, data cached once per server lifetime is always valid.
+  if (cachedData) return cachedData.data;
+
+  // The startup fetch (warmCacheFromAPI) may still be in progress.
+  // Coalesce all concurrent SSR requests into it rather than spawning new ones.
+  if (!inflightFetch) {
+    inflightFetch = warmCacheFromAPI();
+    void inflightFetch.finally(() => { inflightFetch = null; });
   }
 
-  // Coalesce concurrent requests: if a fetch is already in progress, share it
-  if (inflightFetch) {
-    return inflightFetch;
-  }
+  // Wait up to 20s for the startup fetch, then fall back to disk cache so
+  // SSR is never blocked indefinitely on slow API responses.
+  const result = await Promise.race([
+    inflightFetch.catch((): null => null),
+    new Promise<null>((resolve) =>
+      setTimeout(() => resolve(null), FETCH_SSR_TIMEOUT_MS)
+    ),
+  ]);
 
-  inflightFetch = fetchRawDataInternal();
-  try {
-    return await inflightFetch;
-  } finally {
-    inflightFetch = null;
+  if (result !== null) return result;
+
+  // Still running after timeout — serve stale disk cache immediately.
+  // The background fetch will populate cachedData when it finishes.
+  console.warn(`[cache] Startup fetch still running after ${FETCH_SSR_TIMEOUT_MS}ms — serving disk cache`);
+  const stale = readDiskCache();
+  if (stale) {
+    const d = stale.datasets;
+    const data = buildRawFromArrays(
+      d.population, d.urbanRenewal, d.construction, d.housing,
+      d.mechir, d.banks, d.busStops, d.greenBuildings, d.contaminated,
+      d.municipalFinances || []
+    );
+    // Store with current timestamp so this request path is fast on retry,
+    // but the real cachedData will be overwritten once warmCacheFromAPI finishes.
+    cachedData = { data, timestamp: Date.now() };
+    return data;
   }
+  console.warn("[cache] No disk cache available — returning empty data");
+  return buildRawFromArrays([], [], [], [], [], [], [], [], []);
 }
 
-async function fetchRawDataInternal(): Promise<RawCityData> {
-  // Disk-first: if disk cache is fresh enough, load it immediately without
-  // hitting the API. The API (especially bus stops, 33k+ records) can take
-  // 1–2 minutes to paginate sequentially — far too slow for SSR.
+// Fetches all datasets from the API, updates both in-memory and disk cache.
+// Called once on module load (server startup) so data is fresh on each deploy/restart.
+async function warmCacheFromAPI(): Promise<RawCityData> {
+  // If a disk cache exists and is recent enough, use it immediately —
+  // avoids the 1–2 min sequential pagination on every cold start.
   const diskCache = readDiskCache();
-  if (diskCache && Date.now() - diskCache.ts < CACHE_TTL) {
+  if (diskCache && Date.now() - diskCache.ts < DISK_CACHE_MAX_AGE_MS) {
     const d = diskCache.datasets;
     const data = buildRawFromArrays(
       d.population, d.urbanRenewal, d.construction, d.housing,
@@ -247,10 +284,7 @@ async function fetchRawDataInternal(): Promise<RawCityData> {
       d.mechir, d.banks, d.busStops, d.greenBuildings, d.contaminated,
       d.municipalFinances || []
     );
-    // Preserve original disk-cache timestamp so the in-memory TTL reflects
-    // the true data age. Using Date.now() here would reset the clock and
-    // prevent API retries for a full 30 min even after the outage clears.
-    cachedData = { data, timestamp: staleDiskCache.ts };
+    cachedData = { data, timestamp: Date.now() };
     return data;
   }
 
@@ -461,3 +495,9 @@ export async function getCityNameByCode(cityCode: number): Promise<string | null
   }
   return null;
 }
+
+// ── Startup warm-up ──
+// Trigger an API fetch immediately when the server process starts.
+// All consts and functions are defined above so no TDZ issues here.
+// The first user request hits a warm cache; disk cache covers the warmup window.
+inflightFetch = warmCacheFromAPI().finally(() => { inflightFetch = null; });
