@@ -331,14 +331,15 @@ describe("fetchAllDiraProjects — NumOfRecords edge cases (#018)", () => {
 
     expect(result).toHaveLength(0);
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("NumOfRecords=0")
+      expect.stringContaining("Invalid NumOfRecords (0)")
     );
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("only fetches page 1 when NumOfRecords is undefined (known #018 gap — documents current behaviour)", async () => {
-    // NumOfRecords missing → total = undefined → while(1 < undefined) = false → stops after page 1
-    // This test documents the current silent-truncation behaviour until #018 is fixed.
+  it("breaks with warning when NumOfRecords is undefined (fixes #018)", async () => {
+    // NumOfRecords missing → Number.isFinite(undefined) = false → warns and stops after page 1
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     vi.mocked(fetch).mockResolvedValueOnce(
       okResponse({
         ActionStatus: 0,
@@ -351,9 +352,11 @@ describe("fetchAllDiraProjects — NumOfRecords edge cases (#018)", () => {
 
     const result = await fetchAllDiraProjects();
 
-    // Only the single page fetched — second page never requested
     expect(result).toHaveLength(1);
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Invalid NumOfRecords")
+    );
   });
 });
 
@@ -382,25 +385,19 @@ describe("fetchAllDiraProjects — HTTP errors and retries", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   }, 10_000);
 
-  it("retries 404 once then throws — known over-retry (catch checks 'Dira API error' not just 5xx)", async () => {
-    // The catch block retries anything matching "Dira API error" in the message,
-    // which includes 4xx. Ideally only 5xx should retry — tracked as a backlog item.
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(errResponse(404))
-      .mockResolvedValueOnce(errResponse(404));
+  it("throws immediately on 404 without retry (fixes #020)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(errResponse(404));
 
     await expect(fetchAllDiraProjects()).rejects.toThrow("Dira API error (404)");
-    expect(fetch).toHaveBeenCalledTimes(2); // retried once despite being a 4xx
-  }, 10_000);
+    expect(fetch).toHaveBeenCalledTimes(1); // 4xx not retried
+  });
 
-  it("retries 400 once then throws — same over-retry as 404", async () => {
-    vi.mocked(fetch)
-      .mockResolvedValueOnce(errResponse(400))
-      .mockResolvedValueOnce(errResponse(400));
+  it("throws immediately on 400 without retry (fixes #020)", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(errResponse(400));
 
     await expect(fetchAllDiraProjects()).rejects.toThrow("Dira API error (400)");
-    expect(fetch).toHaveBeenCalledTimes(2);
-  }, 10_000);
+    expect(fetch).toHaveBeenCalledTimes(1); // 4xx not retried
+  });
 });
 
 // ---------------------------------------------------------------------------

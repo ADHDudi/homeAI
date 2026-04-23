@@ -6,6 +6,7 @@
  * The API is a public GET endpoint — no auth or session required.
  */
 
+import { fetchWithRetry } from "@/lib/utils/fetchWithRetry";
 import type { DiraApiResponse, DiraProject } from "./types";
 
 const DIRA_BASE = "https://dira.moch.gov.il/api/Invoker";
@@ -13,10 +14,6 @@ const TIMEOUT = 30_000; // 30s — dira.moch.gov.il can be slow
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1_500;
 const PAGE_SIZE = 200;
-
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Makes a single GET request to the Dira API with timeout and retries.
@@ -27,56 +24,24 @@ async function diraRequest(
 ): Promise<DiraApiResponse> {
   const url = `${DIRA_BASE}?method=${encodeURIComponent(method)}&param=${encodeURIComponent(param)}`;
 
-  let lastError: Error | null = null;
+  const response = await fetchWithRetry(url, {
+    headers: {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    next: { revalidate: 900 }, // 15-min revalidation to match cache TTL
+    timeout: TIMEOUT,
+    maxRetries: MAX_RETRIES,
+    retryDelayMs: RETRY_DELAY_MS,
+    // Only retry on 5xx; 4xx errors (400/404) are not retryable
+    isRetryableStatus: (s) => s >= 500,
+  });
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      await sleep(RETRY_DELAY_MS * attempt);
-    }
-
-    let timeoutId!: ReturnType<typeof setTimeout>;
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(
-          () => reject(new Error(`Dira API timeout after ${TIMEOUT}ms`)),
-          TIMEOUT
-        );
-      });
-
-      const response = await Promise.race([
-        fetch(url, {
-          headers: {
-            Accept: "application/json",
-            "X-Requested-With": "XMLHttpRequest",
-          },
-          next: { revalidate: 900 }, // 15-min revalidation to match cache TTL
-        }),
-        timeoutPromise,
-      ]);
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        lastError = new Error(
-          `Dira API error (${response.status}): ${response.statusText}`
-        );
-        if (response.status >= 500 && attempt < MAX_RETRIES - 1) continue;
-        throw lastError;
-      }
-
-      const data = (await response.json()) as DiraApiResponse;
-      return data;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      lastError = err instanceof Error ? err : new Error(String(err));
-      const isRetryable =
-        lastError.message.includes("timeout") ||
-        lastError.message.includes("Dira API error");
-      if (isRetryable && attempt < MAX_RETRIES - 1) continue;
-      throw lastError;
-    }
+  if (!response.ok) {
+    throw new Error(`Dira API error (${response.status}): ${response.statusText}`);
   }
 
-  throw lastError || new Error("Dira request failed after retries");
+  return (await response.json()) as DiraApiResponse;
 }
 
 /**
@@ -103,13 +68,15 @@ export async function fetchAllDiraProjects(): Promise<DiraProject[]> {
       allProjects.push(...data.ProjectItems);
     }
 
-    // First page tells us the total; treat 0 as a signal that something is wrong
+    // First page tells us the total; guard against NaN/undefined/non-finite values
     if (page === 1) {
-      total = data.NumOfRecords;
-      if (total === 0) {
-        console.warn("[dira] NumOfRecords=0 on page 1 — API may have returned empty data");
+      if (!Number.isFinite(data.NumOfRecords) || data.NumOfRecords <= 0) {
+        console.warn(
+          `[dira] Invalid NumOfRecords (${data.NumOfRecords}) on page 1 — stopping pagination`
+        );
         break;
       }
+      total = data.NumOfRecords;
     }
 
     // If API returned all at once (IsAll=true) or no more items, stop

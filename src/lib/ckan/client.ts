@@ -7,15 +7,12 @@
  */
 
 import { CKAN_BASE_URL, USER_AGENT } from "@/config/datasets";
+import { fetchWithRetry } from "@/lib/utils/fetchWithRetry";
 import type { CkanResponse, DatastoreSearchResult, SearchParams } from "./types";
 
-const FETCH_TIMEOUT = 15000; // 15s – fail fast, don't block SSR
+const FETCH_TIMEOUT = 15_000; // 15s – fail fast, don't block SSR
 const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 1500;
-
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const RETRY_DELAY_MS = 1_500;
 
 /**
  * Sends a single request to the CKAN API with automatic retries.
@@ -37,58 +34,25 @@ export async function ckanRequest<T>(
     url.searchParams.append(key, value);
   });
 
-  let lastError: Error | null = null;
+  const response = await fetchWithRetry(url.toString(), {
+    headers: { "User-Agent": USER_AGENT },
+    cache: "no-store", // Skip Next.js cache (responses >2MB fail)
+    timeout,
+    maxRetries: MAX_RETRIES,
+    retryDelayMs: RETRY_DELAY_MS,
+    isRetryableStatus: (s) => s === 409 || s === 503 || s >= 500,
+  });
 
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      await sleep(RETRY_DELAY_MS * attempt);
-    }
-
-    let timeoutId!: ReturnType<typeof setTimeout>;
-    try {
-      // Use Promise.race for timeout — AbortController.abort() throws an internal
-      // Node.js error (controller[kState].transformAlgorithm) in some versions,
-      // which silently swallows the abort and lets fetches hang indefinitely.
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Request timeout after ${timeout}ms`)), timeout);
-      });
-
-      const response = await Promise.race([
-        fetch(url.toString(), {
-          headers: { "User-Agent": USER_AGENT },
-          cache: "no-store", // Skip Next.js cache (responses >2MB fail)
-        }),
-        timeoutPromise,
-      ]);
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const isRetryable = response.status === 409 || response.status === 503 || response.status >= 500;
-        lastError = new Error(`CKAN API error (${response.status}): ${response.statusText}`);
-        if (isRetryable && attempt < MAX_RETRIES - 1) {
-          continue;
-        }
-        throw lastError;
-      }
-
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error("CKAN API returned unsuccessful response");
-      }
-
-      return data as CkanResponse<T>;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      lastError = err instanceof Error ? err : new Error(String(err));
-      const isTimeout = lastError.message.startsWith("Request timeout");
-      if ((isTimeout || lastError.message.includes("CKAN API error")) && attempt < MAX_RETRIES - 1) {
-        continue;
-      }
-      throw lastError;
-    }
+  if (!response.ok) {
+    throw new Error(`CKAN API error (${response.status}): ${response.statusText}`);
   }
 
-  throw lastError || new Error("CKAN request failed after retries");
+  const data = await response.json();
+  if (!data.success) {
+    throw new Error("CKAN API returned unsuccessful response");
+  }
+
+  return data as CkanResponse<T>;
 }
 
 /**
