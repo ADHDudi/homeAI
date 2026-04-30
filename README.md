@@ -9,11 +9,11 @@ A real-time investment analysis platform for Israeli cities. HomeAI scores 200+ 
 ## Features
 
 - **Investment Scoring Engine** -- 6 weighted sub-scores computed from 10 government datasets, producing a 0-100 composite score for every city
-- **Interactive City Map** -- Leaflet-based map with marker clustering, color-coded by investment score
+- **Interactive City Map** -- Leaflet-based map with marker clustering, color-coded by investment score; covers 200+ cities including ~92 previously missing via district/subdistrict coordinate fallback; Leaflet bundle preloads on city-list hover to reduce map init delay; neighborhood markers appear immediately on city select while data loads in the background
 - **City Detail View** -- Deep-dive into any city with neighborhood-level data, score breakdowns, and demographic charts
 - **Side-by-Side City Comparison** -- Compare two or more cities across all scoring dimensions
 - **Market Summary Charts** -- Recharts-powered visualizations of national trends, district distributions, and score histograms
-- **Responsive Design** -- Optimized layouts for mobile, tablet, and desktop
+- **Responsive Design** -- Optimized layouts for mobile, tablet, and desktop; dashboard uses a compact 3-column stats row (always horizontal on mobile) with city rankings rendered as a scrollable list on mobile and a bar chart on desktop
 - **Real-Time Data** -- All metrics derived from 10 government datasets fetched via the CKAN API, with in-memory and disk caching
 
 ---
@@ -140,7 +140,7 @@ data.gov.il (CKAN API)
         |
         v
   Aggregator + Cache Layer
-  (30-min in-memory TTL + disk cache)
+  (per-server-lifetime in-memory cache, warmed on startup + disk cache)
         |
         v
   Scoring Engine
@@ -153,7 +153,7 @@ data.gov.il (CKAN API)
 
 1. **Data Ingestion** -- The aggregator (`src/lib/data/`) fetches all datasets from data.gov.il via the CKAN `datastore_search` API in parallel. Hebrew field names are mapped to English using the field maps in `src/config/datasets.ts`.
 
-2. **Caching** -- Results are held in a 30-minute in-memory cache with a persistent disk fallback (`.data-cache/raw-datasets.json`). Each dataset fails gracefully and independently.
+2. **Caching** -- Results are held in a per-server-lifetime in-memory cache (TTL = Infinity) with a persistent disk fallback (`.data-cache/raw-datasets.json`). The cache is warmed automatically on module load (`warmCacheFromAPI()`) so data is hot before the first user request; it refreshes only on server restart or deploy. Stale disk data is also loaded into memory after an SSR timeout so subsequent requests return instantly. Each dataset fails gracefully and independently.
 
 3. **Scoring** -- The scoring engine (`src/lib/scoring/calculator.ts`) computes percentile ranks across all cities for each metric, normalizes per capita where relevant, and produces six sub-scores that are combined into a weighted composite.
 
