@@ -15,6 +15,8 @@ A real-time investment analysis platform for Israeli cities. HomeAI scores 200+ 
 - **Market Summary Charts** -- Recharts-powered visualizations of national trends, district distributions, and score histograms
 - **Responsive Design** -- Optimized layouts for mobile, tablet, and desktop
 - **Real-Time Data** -- All metrics derived from 10 government datasets fetched via the CKAN API, with in-memory and disk caching
+- **Mobile-Optimized Dashboard** -- Compact 3-column stat row, city rankings as scrollable list on mobile and bar chart on desktop
+- **Full City Map Coverage** -- 200+ cities including the ~92 previously missing coordinates, resolved via district/subdistrict fallback
 
 ---
 
@@ -140,7 +142,7 @@ data.gov.il (CKAN API)
         |
         v
   Aggregator + Cache Layer
-  (30-min in-memory TTL + disk cache)
+  (server-lifetime in-memory cache + disk fallback)
         |
         v
   Scoring Engine
@@ -153,7 +155,7 @@ data.gov.il (CKAN API)
 
 1. **Data Ingestion** -- The aggregator (`src/lib/data/`) fetches all datasets from data.gov.il via the CKAN `datastore_search` API in parallel. Hebrew field names are mapped to English using the field maps in `src/config/datasets.ts`.
 
-2. **Caching** -- Results are held in a 30-minute in-memory cache with a persistent disk fallback (`.data-cache/raw-datasets.json`). Each dataset fails gracefully and independently.
+2. **Caching** -- Data is fetched once on server startup and held in memory for the server's lifetime (`CACHE_TTL = Infinity`). A warm-up call (`warmCacheFromAPI()`) fires on module load so data is hot before the first user request. If the startup fetch is still in progress when an SSR request arrives, the server waits up to 20 s then falls back to the persistent disk cache (`.data-cache/raw-datasets.json`), ensuring SSR is never blocked indefinitely. Each dataset fails gracefully and independently.
 
 3. **Scoring** -- The scoring engine (`src/lib/scoring/calculator.ts`) computes percentile ranks across all cities for each metric, normalizes per capita where relevant, and produces six sub-scores that are combined into a weighted composite.
 
